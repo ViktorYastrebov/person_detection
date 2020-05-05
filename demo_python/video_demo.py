@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import cv2
 import time
@@ -20,21 +21,37 @@ def run_processing(video_stream: cv2.VideoCapture):
     graph = tf.Graph()
     return_tensors = utils.read_pb_return_tensors(graph, pb_file, return_elements)
 
+    counter = 0
+    classes = utils.read_class_names()
     with tf.Session(graph=graph) as sess:
         while True:
             return_value, frame = video_stream.read()
             if return_value:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                counter = 0
             else:
-                break
+                counter += 1
+                if counter > 5:
+                    return
+                else:
+                    continue
+            preproc_time_start = time.time()
             frame_size = frame.shape[:2]
             image_data = utils.image_preporcess(np.copy(frame), [input_size, input_size])
             image_data = image_data[np.newaxis, ...]
             prev_time = time.time()
+            preproc_time = prev_time - preproc_time_start
+            info = "preprocessing time: %.2f ms" % (1000 * preproc_time)
+            print(info)
 
+            model_time = time.time()
             pred_sbbox, pred_mbbox, pred_lbbox = sess.run(
                 [return_tensors[1], return_tensors[2], return_tensors[3]],
                 feed_dict={return_tensors[0]: image_data})
+            end_model_time = time.time()
+            proc_model_time = end_model_time - model_time
+            info = "preprocessing model time: %.2f ms" % (1000 * proc_model_time)
+            print(info)
 
             pred_bbox = np.concatenate([np.reshape(pred_sbbox, (-1, 5 + num_classes)),
                                         np.reshape(pred_mbbox, (-1, 5 + num_classes)),
@@ -42,7 +59,7 @@ def run_processing(video_stream: cv2.VideoCapture):
 
             bboxes = utils.postprocess_boxes(pred_bbox, frame_size, input_size, 0.7)
             bboxes = utils.nms(bboxes, 0.45, method='nms')
-            result_image = utils.draw_bbox(frame, bboxes)
+            result_image = utils.draw_bbox(frame, bboxes, classes)
 
             curr_time = time.time()
             exec_time = curr_time - prev_time
@@ -56,6 +73,9 @@ def run_processing(video_stream: cv2.VideoCapture):
 
 
 if __name__ == '__main__':
+
+    os.chdir(os.getcwd() + "\\..\\app")
+
     parser = argparse.ArgumentParser(description='Demo')
     parser.add_argument('--file', type=str, help='Specify video file for processing')
     parser.add_argument('--stream', type=int, help='Specify video stream for processing')

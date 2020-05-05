@@ -15,7 +15,6 @@ def read_class_names(class_file_name=CLASSES):
             names[ID] = name.strip('\n')
     return names
 
-
 def get_anchors(anchors_path):
     """loads the anchors from a file"""
     with open(anchors_path) as f:
@@ -48,7 +47,7 @@ def image_preporcess(image, target_size, gt_boxes=None):
         return image_paded, gt_boxes
 
 
-def draw_bbox(image, bboxes, classes=read_class_names(), show_label=True):
+def draw_bbox(image, bboxes, classes: dict, show_label=True):
     """
     bboxes: [x_min, y_min, x_max, y_max, probability, cls_id] format coordinates.
     """
