@@ -8,7 +8,6 @@
 #include "decl_spec.h"
 #include "device_utils.h"
 
-
 class ENGINE_DECL YoloV3 {
 public:
     YoloV3(const std::string &model, const std::string &config, RUN_ON device = RUN_ON::CPU);

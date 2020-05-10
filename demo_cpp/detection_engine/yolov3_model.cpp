@@ -1,11 +1,19 @@
 #include "yolov3_model.h"
 
+#include <opencv2/core/ocl.hpp>
+
 YoloV3::YoloV3(const std::string &path, const std::string &config, RUN_ON device)
 {
     net_ = cv::dnn::readNet(path, config);
+    //INFO: can map into different structure like GPU -> autodetection CUDA or OpenCL GPU device
     if (device == RUN_ON::GPU) {
         net_.setPreferableBackend(cv::dnn::Backend::DNN_BACKEND_CUDA);
         net_.setPreferableTarget(cv::dnn::Target::DNN_TARGET_CUDA);
+    }
+    else if (device == RUN_ON::OPENCL) {
+        net_.setPreferableBackend(cv::dnn::Backend::DNN_BACKEND_OPENCV);
+        putenv("OPENCV_OPENCL_DEVICE=:GPU:0");
+        net_.setPreferableTarget(cv::dnn::Target::DNN_TARGET_OPENCL);
     }
     output_layers_ = net_.getUnconnectedOutLayersNames();
 }
@@ -45,7 +53,6 @@ std::vector<cv::Rect> YoloV3::process(const cv::Mat &frame) {
             }
         }
     }
-
     std::vector<cv::Rect> out_bboxes;
     std::vector<int> idxs;
     cv::dnn::NMSBoxes(bboxes, scores, 0.5f, 0.4f, idxs);
