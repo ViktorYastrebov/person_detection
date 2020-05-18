@@ -31,7 +31,7 @@ set(LIBEVENT_LIBRARIES ${LIBEVENT_BASE_DIR}/lib/event_core.lib ${LIBEVENT_BASE_D
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${LIBEVENT_INCLUDE_DIR})
 
-add_executable(server_demo "main.cpp")
+add_executable(server_demo "main.cpp" "server/server.h" "server/server.cpp")
 
 target_link_libraries(server_demo ${LIBEVENT_LIBRARIES})
 if(WIN32)
