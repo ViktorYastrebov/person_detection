@@ -36,7 +36,10 @@ add_executable(server_demo 	"main.cpp"
 							"camera_client/face_handler.h"
 							"camera_client/alarm_handler.cpp"
 							"camera_client/alarm_handler.h"
+							"camera_client/video_stream.cpp"
+							"camera_client/video_stream.h"
 							)
+
 target_link_libraries( server_demo ${CAMERA_SDK_LIB_PATH}/sdk.lib)
 
 # ADD_CUSTOM_COMMAND(TARGET server_demo POST_BUILD

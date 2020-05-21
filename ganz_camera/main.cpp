@@ -5,6 +5,7 @@
 
 #include "camera_client/sdk_context.h"
 #include "camera_client/face_handler.h"
+#include "camera_client/video_stream.h"
 
 int main(int argc, char *argv[])
 {
@@ -30,6 +31,7 @@ int main(int argc, char *argv[])
     ganz_camera::Connection & connection = context.buildConnection(host, user, pwd, is_ssl);
 
     ganz_camera::FaceHandler faceHandler(connection);
+    ganz_camera::VideoStream stream(connection, 1, ganz_camera::VideoStream::HD);
 
     //SOME INFINIT LOOP
     std::string input;
