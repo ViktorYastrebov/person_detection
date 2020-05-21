@@ -28,14 +28,14 @@ add_definitions(-DSDKS_USE_DLL)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CAMERA_SDK_INCLUDE})
 
 add_executable(server_demo 	"main.cpp"
-							"camera_client/client.cpp"
-							"camera_client/client.h"
+							"camera_client/connection.cpp"
+							"camera_client/connection.h"
 							"camera_client/sdk_context.cpp"
 							"camera_client/sdk_context.h"
-							"camera_client/face_data_handler.cpp"
-							"camera_client/face_data_handler.h"
-							"camera_client/alarm_data_handler.cpp"
-							"camera_client/alarm_data_handler.h"
+							"camera_client/face_handler.cpp"
+							"camera_client/face_handler.h"
+							"camera_client/alarm_handler.cpp"
+							"camera_client/alarm_handler.h"
 							)
 target_link_libraries( server_demo ${CAMERA_SDK_LIB_PATH}/sdk.lib)
 

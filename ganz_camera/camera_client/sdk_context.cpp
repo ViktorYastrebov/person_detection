@@ -5,7 +5,9 @@
 
 namespace ganz_camera {
 
-    SDKContext::SDKContext() {
+    SDKContext::SDKContext()
+        :conn_()
+    {
         int ret = sdks_dev_init(nullptr);
         if (ret) {
             throw std::exception("SDK initialization error occurs");
@@ -16,4 +18,8 @@ namespace ganz_camera {
         sdks_dev_quit();
     }
 
+    Connection & SDKContext::buildConnection(const std::string &host, const std::string &user, const std::string &pwd, bool ssl) {
+        conn_.reset(new Connection(host, user, pwd, ssl));
+        return *conn_;
+    }
 }
