@@ -26,48 +26,6 @@ void alarm_handler(unsigned int handle, void** p_data, void* p_obj) {
             std::ofstream *ptr = static_cast<std::ofstream*>(p_obj);
             (*ptr) << "Alarm data :" << data << std::endl;
         }
-
-        //std::cout << "Alarm data :" << data << std::endl;
-
-
-        //解析报警信息
-        //char p_result[1024] = { 0 };
-        //strcpy(p_result, (char*)*p_data);
-        //cJSON *p_json_root = cJSON_Parse((char*)*p_data);
-        //cJSON* p_json_data = cJSON_GetObjectItemEx(p_json_root, "data", cJSON_Object);
-        //cJSON* p_data_1 = cJSON_GetObjectItemEx(p_json_data, "dev_ip", cJSON_String);   //设备IP
-        //cJSON* p_data_2 = cJSON_GetObjectItemEx(p_json_data, "src_type", cJSON_Number);  //报警源类型
-        //cJSON* p_data_3 = cJSON_GetObjectItemEx(p_json_data, "src_id", cJSON_Number);    //报警源ID
-        //cJSON* p_data_4 = cJSON_GetObjectItemEx(p_json_data, "dev_id", cJSON_String);     //设备ID
-        //cJSON* p_data_5 = cJSON_GetObjectItemEx(p_json_data, "dev_type", cJSON_Number);   //设备类型
-        //cJSON* p_data_6 = cJSON_GetObjectItemEx(p_json_data, "main_type", cJSON_Number);   //报警主类型
-        //cJSON* p_data_7 = cJSON_GetObjectItemEx(p_json_data, "sub_type", cJSON_Number);    //报警次类型
-        //cJSON* p_data_8 = cJSON_GetObjectItemEx(p_json_data, "alarm_flag", cJSON_Number);  //报警标志。1：开始，2：停止
-        //cJSON* p_data_9 = cJSON_GetObjectItemEx(p_json_data, "time", cJSON_String);        //报警时间
-        //cJSON* p_SNPointList = cJSON_GetObjectItemEx(p_json_root, "SNPointList", cJSON_Array);
-        //for (int i = 0; i < cJSON_GetArraySize(p_SNPointList); i++)
-        //{
-        //    cJSON *item = cJSON_GetArrayItem(p_SNPointList, i);
-        //    cJSON* p_SNPointList_1 = cJSON_GetObjectItemEx(item, "X", cJSON_Number);
-        //    cJSON* p_SNPointList_2 = cJSON_GetObjectItemEx(item, "Y", cJSON_Number);
-        //}
-        //cJSON* p_AlarmAreaList = cJSON_GetObjectItemEx(p_json_root, "AlarmAreaList", cJSON_Array);
-        //for (int i = 0; i < cJSON_GetArraySize(p_AlarmAreaList); i++)
-        //{
-        //    cJSON *item = cJSON_GetArrayItem(p_AlarmAreaList, i);
-        //    cJSON* p_top = cJSON_GetObjectItemEx(item, "top", cJSON_Number);
-        //    cJSON* p_bottom = cJSON_GetObjectItemEx(item, "bottom", cJSON_Number);
-        //    cJSON* p_left = cJSON_GetObjectItemEx(item, "left", cJSON_Number);
-        //    cJSON* p_right = cJSON_GetObjectItemEx(item, "right", cJSON_Number);
-        //}
-        //cJSON* p_json_Thermal = cJSON_GetObjectItemEx(p_json_root, "Thermal", cJSON_Object);
-        //cJSON* p_MaxTemperature_X = cJSON_GetObjectItemEx(p_json_Thermal, "MaxTemperature_X", cJSON_Number);
-        //cJSON* p_MaxTemperature_Y = cJSON_GetObjectItemEx(p_json_Thermal, "MaxTemperature_Y", cJSON_Number);
-        //cJSON* p_MaxTemperature = cJSON_GetObjectItemEx(p_json_Thermal, "MaxTemperature", cJSON_Number);
-        //cJSON* p_MinTemperature = cJSON_GetObjectItemEx(p_json_Thermal, "MinTemperature", cJSON_Number);
-        //cJSON* p_TemperatureThreshold = cJSON_GetObjectItemEx(p_json_Thermal, "TemperatureThreshold", cJSON_Number);
-
-        //cJSON_Delete(p_json_root);
     }
 }
 
@@ -82,37 +40,6 @@ void face_detection_handler(unsigned int handle, int stream_id, void** p_result,
         }
 
     }
-    //if (p_pic_data != NULL)
-    //{
-    //    cJSON* p_root = cJSON_Parse((char*)*p_result);
-    //    if (p_root == NULL)
-    //    {
-    //        return;
-    //    }
-    //    cJSON* pic_len = cJSON_GetObjectItemEx(p_root, "PictureLen", cJSON_Number);
-    //    if (NULL == pic_len)
-    //    {
-    //        return;
-    //    }
-    //    char result[1024] = { 0 };
-    //    sprintf(result, "%s", *p_result);
-    //    FILE  *fp = fopen("E://picture//json.txt", "ab+");
-    //    fprintf(fp, "%s\n", result);
-    //    fflush(fp);
-    //    fclose(fp);
-
-    //    char* data = (char*)p_pic_data;
-    //    char chTemp[64] = {};
-    //    std::string pic_name = "E://picture//";
-    //    sprintf(chTemp, "%s%d%s", "E://picture//test", npic_num, ".jpg");
-    //    FILE  *file = fopen(chTemp, "wb+");
-    //    if (file == NULL) {
-    //        return;
-    //    }
-    //    size_t size = fwrite(data, 1, pic_len->valueint, file);
-    //    fclose(file);
-    //    npic_num++;
-    //}
 }
 
 
