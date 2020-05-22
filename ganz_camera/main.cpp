@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     ganz_camera::SDKContext context;
     ganz_camera::Connection & connection = context.buildConnection(host, user, pwd, is_ssl);
 
-    ganz_camera::FaceHandler faceHandler(connection);
+    //ganz_camera::FaceHandler faceHandler(connection);
     ganz_camera::VideoStream stream(connection, 1, ganz_camera::VideoStream::HD);
 
     //SOME INFINIT LOOP

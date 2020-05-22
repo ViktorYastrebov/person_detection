@@ -24,8 +24,18 @@ else()
 	set(CAMERA_SDK_LIB_PATH ${CAMERA_SDK_DIR}/windows/x86)
 endif()
 
+
+set(FFMPEG_BASE_DIR "F:\\sdks\\vc17\\ffmpeg-4.2.2-win64-dev")
+set(FFMPEG_INCLUDE_DIR ${FFMPEG_BASE_DIR}/include)
+set(FFMPEG_LIB_DIR ${FFMPEG_BASE_DIR}/lib)
+
+set(FFMPEG_LIBS ${FFMPEG_LIB_DIR}/libavformat.lib
+				${FFMPEG_LIB_DIR}/libavcodec.lib
+				${FFMPEG_LIB_DIR}/libswscale.lib
+				${FFMPEG_LIB_DIR}/libavutil.lib)
+
 add_definitions(-DSDKS_USE_DLL)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CAMERA_SDK_INCLUDE})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CAMERA_SDK_INCLUDE} ${FFMPEG_INCLUDE_DIR})
 
 add_executable(server_demo 	"main.cpp"
 							"camera_client/connection.cpp"
@@ -38,9 +48,13 @@ add_executable(server_demo 	"main.cpp"
 							"camera_client/alarm_handler.h"
 							"camera_client/video_stream.cpp"
 							"camera_client/video_stream.h"
+							"camera_client/decoders/decoder.cpp"
+							"camera_client/decoders/decoder.h"
 							)
 
-target_link_libraries( server_demo ${CAMERA_SDK_LIB_PATH}/sdk.lib)
+							
+							
+target_link_libraries( server_demo ${CAMERA_SDK_LIB_PATH}/sdk.lib ${FFMPEG_LIB}/)
 
 # ADD_CUSTOM_COMMAND(TARGET server_demo POST_BUILD
 #               COMMAND copy "${CAMERA_SDK_LIB_PATH}\\*.dll"
