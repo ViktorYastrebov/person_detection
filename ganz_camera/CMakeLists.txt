@@ -25,17 +25,29 @@ else()
 endif()
 
 
-set(FFMPEG_BASE_DIR "F:\\sdks\\vc17\\ffmpeg-4.2.2-win64-dev")
+set(FFMPEG_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-4.2.2-win64")
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_BASE_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_BASE_DIR}/lib)
 
-set(FFMPEG_LIBS ${FFMPEG_LIB_DIR}/libavformat.lib
-				${FFMPEG_LIB_DIR}/libavcodec.lib
-				${FFMPEG_LIB_DIR}/libswscale.lib
-				${FFMPEG_LIB_DIR}/libavutil.lib)
+set(FFMPEG_LIBS ${FFMPEG_LIB_DIR}/avutil.lib
+				${FFMPEG_LIB_DIR}/avformat.lib
+				${FFMPEG_LIB_DIR}/avcodec.lib
+				${FFMPEG_LIB_DIR}/swscale.lib
+				)
+				
+				
+# INFO: set directory to the base of built OpenCV
+if (${BUILD_TYPE} STREQUAL "debug")
+	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu_debug")
+else()
+	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu")
+endif()				
+				
+find_package(OpenCV REQUIRED PATHS ${INSTALLED_OPENCV_PATH} NO_DEFAULT_PATH)
+
 
 add_definitions(-DSDKS_USE_DLL)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CAMERA_SDK_INCLUDE} ${FFMPEG_INCLUDE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CAMERA_SDK_INCLUDE} ${FFMPEG_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS})
 
 add_executable(server_demo 	"main.cpp"
 							"camera_client/connection.cpp"
@@ -54,7 +66,7 @@ add_executable(server_demo 	"main.cpp"
 
 							
 							
-target_link_libraries( server_demo ${CAMERA_SDK_LIB_PATH}/sdk.lib ${FFMPEG_LIB}/)
+target_link_libraries( server_demo ${CAMERA_SDK_LIB_PATH}/sdk.lib ${FFMPEG_LIBS} ${OpenCV_LIBS})
 
 # ADD_CUSTOM_COMMAND(TARGET server_demo POST_BUILD
 #               COMMAND copy "${CAMERA_SDK_LIB_PATH}\\*.dll"

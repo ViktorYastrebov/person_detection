@@ -15,6 +15,8 @@ namespace ganz_camera {
     }
 
     SDKContext::~SDKContext() {
+        //INFO: order is important
+        conn_.reset();
         sdks_dev_quit();
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "camera_client/connection.h"
+#include "decoders/decoder.h"
 
 namespace ganz_camera {
 
@@ -10,6 +11,8 @@ namespace ganz_camera {
         void stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
     }
 
+    //INFO: it hangs after passing some frames,
+    //      It relates to Decode part. If it's turned off it works fine
     class VideoStream {
     public:
         enum STREAM_TYPE: int {
@@ -23,12 +26,15 @@ namespace ganz_camera {
     private:
         friend void callback_wrapper::stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
 
-        //void handle();
+        void handle(unsigned char *data, int data_length);
 
         Connection &owner_;
         STREAM_TYPE stream_type_;
         int channel_;
         int stream_id_;
+        decoders::H264Decoder h264_decoder_;
+
+        int counter_ = 0;
     };
 
 }

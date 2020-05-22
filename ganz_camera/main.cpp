@@ -7,6 +7,8 @@
 #include "camera_client/face_handler.h"
 #include "camera_client/video_stream.h"
 
+#include <opencv2/opencv.hpp>
+
 int main(int argc, char *argv[])
 {
     std::string host;
@@ -28,18 +30,19 @@ int main(int argc, char *argv[])
     }
 
     ganz_camera::SDKContext context;
-    ganz_camera::Connection & connection = context.buildConnection(host, user, pwd, is_ssl);
+    {
+        ganz_camera::Connection & connection = context.buildConnection(host, user, pwd, is_ssl);
 
-    //ganz_camera::FaceHandler faceHandler(connection);
-    ganz_camera::VideoStream stream(connection, 1, ganz_camera::VideoStream::HD);
+        ganz_camera::VideoStream stream(connection, 1, ganz_camera::VideoStream::HD);
+        ganz_camera::FaceHandler faceHandler(connection);
 
-    //SOME INFINIT LOOP
-    std::string input;
-    while (std::getline(std::cin, input)) {
-        if (input == "exit") {
-            break;
+        //SOME INFINIT LOOP
+        std::string input;
+        while (std::getline(std::cin, input)) {
+            if (input == "exit") {
+                break;
+            }
         }
     }
-
     return 0;
 }

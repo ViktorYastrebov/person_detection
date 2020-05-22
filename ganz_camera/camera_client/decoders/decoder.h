@@ -1,23 +1,27 @@
 #pragma once
 
+extern "C" {
 #include <libavcodec/avcodec.h>
+}
+
+#include <opencv2/core.hpp>
+
 
 namespace ganz_camera {
     namespace decoders {
 
         class H264Decoder final {
         public:
-            H264Decoder(AVCodecID codec_id);
+            H264Decoder();
             ~H264Decoder();
-            void decode(const unsigned char *data, int data_length);
+            cv::Mat decode(unsigned char *data, int data_length);
         private:
             AVCodecID codec_id_;
             AVPacket* packet_;
             AVCodec *codec_;
-            AVCodecParserContext *parser_;
             AVCodecContext *codec_ctx_;
-
             AVFrame *frame_;
+            //AVFrame *BGR_frame_;
         };
     }
 }

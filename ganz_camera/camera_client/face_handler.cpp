@@ -1,7 +1,7 @@
 #include "face_handler.h"
 #include "sdks.h"
 
-
+#include <iostream>
 
 namespace ganz_camera {
 
@@ -16,10 +16,15 @@ namespace ganz_camera {
                 //INFO: need deeper investigation with localization strings, may be need to use ICU
                 const char *json_data_ptr = static_cast<char*>(*p_result);
                 std::string json_string(json_data_ptr);
-                auto json_data = json::parse(json_string);
-
-                const char *picture_ptr = static_cast<char*>(picture_data);
-                owner->handle(json_data, picture_ptr);
+                std::cout << "Face detection :" << json_string << std::endl;
+                try {
+                    auto json_data = json::parse(json_string);
+                    const char *picture_ptr = static_cast<char*>(picture_data);
+                    owner->handle(json_data, picture_ptr);
+                }
+                catch (const std::exception &ex) {
+                    std::cout << "Error : " << ex.what() << std::endl;
+                }
             }
         }
     }
