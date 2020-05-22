@@ -38,7 +38,8 @@ set(FFMPEG_LIBS ${FFMPEG_LIB_DIR}/avutil.lib
 				
 # INFO: set directory to the base of built OpenCV
 if (${BUILD_TYPE} STREQUAL "debug")
-	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu_debug")
+	set(INSTALLED_OPENCV_PATH "F:/sdks/building/opencv/opencv-4.2/opencv-4.2.0_build_dbg_opencl")
+	# set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu_debug")
 else()
 	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu")
 endif()				

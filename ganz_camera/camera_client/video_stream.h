@@ -21,7 +21,10 @@ namespace ganz_camera {
             //NOT_SUPPORTED_SMOOTH = 3
         };
 
-        VideoStream(Connection &owner, const int channel, STREAM_TYPE type);
+        //INFO: cv::Mat is intrusive ptr so its safe to pass by value
+        using OutHandler = std::function<void(cv::Mat image)>;
+
+        VideoStream(Connection &owner, const int channel, STREAM_TYPE type, OutHandler handler);
         ~VideoStream();
     private:
         friend void callback_wrapper::stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
@@ -33,8 +36,7 @@ namespace ganz_camera {
         int channel_;
         int stream_id_;
         decoders::H264Decoder h264_decoder_;
-
-        int counter_ = 0;
+        OutHandler handler_;
     };
 
 }

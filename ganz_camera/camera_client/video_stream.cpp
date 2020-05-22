@@ -52,44 +52,33 @@ namespace ganz_camera {
                 //std::cout << "\tnImageHeight :" << p_frame->nImageHeight << std::endl;
 
                 unsigned char *data_ptr = (unsigned char*)p_frame->pszData;
-                //std::vector<unsigned char> value(p_frame->pszData[0], p_frame->pszData[p_frame->nDataLength]);
-                //int data_length = p_frame->nDataLength;
-                // put to queue and process ??
                 owner->handle(data_ptr, p_frame->nDataLength);
             }
         }
     }
 
-    VideoStream::VideoStream(Connection &owner, const int channel, STREAM_TYPE type)
-        :owner_(owner)
+    VideoStream::VideoStream(Connection &owner, const int channel, STREAM_TYPE type, OutHandler handler)
+        : owner_(owner)
         , stream_type_(type)
         , channel_(channel)
         , h264_decoder_()
+        , handler_(handler)
     {
         stream_id_ = sdks_dev_live_start(owner_.getHandle(), channel_, stream_type_, callback_wrapper::stream_handler, this);
         if (stream_id_ < 0) {
             throw std::exception("sdks_dev_live_start has failed");
         }
-        //OpenCV stuffs
-        //cv::startWindowThread();
-        //cv::namedWindow("Display");
     }
 
     VideoStream::~VideoStream()
     {
-        //cv::destroyAllWindows();
         sdks_dev_live_stop(owner_.getHandle(), stream_id_);
     }
 
     void VideoStream::handle(unsigned char *data, int data_length) {
         cv::Mat ret = h264_decoder_.decode(data, data_length);
         if (!ret.empty()) {
-            std::cout << "has data" << std::endl;
-            //cv::imshow("Display", ret);
-            //cv::waitKey(1);
-            //std::string name = "test_" + std::to_string(counter_) + ".png";
-            //cv::imwrite(name, ret);
-            //++counter_;
+            handler_(ret);
         }
     }
 }

@@ -2,16 +2,18 @@
 
 #include <memory>
 #include "camera_client/connection.h"
+#include <list>
 
 namespace ganz_camera {
 
     // INFO: can be made as singleton
     class SDKContext  final {
     public:
+        using ConnectionPtr = std::shared_ptr<Connection>;
         SDKContext();
         ~SDKContext();
-        Connection& buildConnection(const std::string &host, const std::string &user, const std::string &pwd, bool ssl = false);
+        ConnectionPtr buildConnection(const std::string &host, const std::string &user, const std::string &pwd, bool ssl = false);
     private:
-        std::unique_ptr<Connection> conn_;
+        std::list< ConnectionPtr > connections_;
     };
 }

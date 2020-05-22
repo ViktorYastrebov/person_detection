@@ -11,21 +11,22 @@ namespace ganz_camera {
 
     namespace callback_wrapper {
         void face_detection_handler(unsigned int handle, int stream_id, void** p_result, void* picture_data, void* p_obj) {
-            ganz_camera::FaceHandler* owner = static_cast<ganz_camera::FaceHandler*>(p_obj);
-            if (p_result) {
-                //INFO: need deeper investigation with localization strings, may be need to use ICU
-                const char *json_data_ptr = static_cast<char*>(*p_result);
-                std::string json_string(json_data_ptr);
-                std::cout << "Face detection :" << json_string << std::endl;
-                try {
-                    auto json_data = json::parse(json_string);
-                    const char *picture_ptr = static_cast<char*>(picture_data);
-                    owner->handle(json_data, picture_ptr);
-                }
-                catch (const std::exception &ex) {
-                    std::cout << "Error : " << ex.what() << std::endl;
-                }
-            }
+            std::cout << "face_detection_handler call" << std::endl;
+            //ganz_camera::FaceHandler* owner = static_cast<ganz_camera::FaceHandler*>(p_obj);
+            //if (p_result) {
+            //    //INFO: need deeper investigation with localization strings, may be need to use ICU
+            //    const char *json_data_ptr = static_cast<char*>(*p_result);
+            //    std::string json_string(json_data_ptr);
+            //    std::cout << "Face detection :" << json_string << std::endl;
+            //    try {
+            //        auto json_data = json::parse(json_string);
+            //        const char *picture_ptr = static_cast<char*>(picture_data);
+            //        owner->handle(json_data, picture_ptr);
+            //    }
+            //    catch (const std::exception &ex) {
+            //        std::cout << "Error : " << ex.what() << std::endl;
+            //    }
+            //}
         }
     }
 
