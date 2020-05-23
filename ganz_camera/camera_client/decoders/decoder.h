@@ -19,6 +19,7 @@ namespace ganz_camera {
             AVCodecID codec_id_;
             AVPacket* packet_;
             AVCodec *codec_;
+            AVCodecParserContext *parser_;
             AVCodecContext *codec_ctx_;
             AVFrame *frame_;
             //AVFrame *BGR_frame_;

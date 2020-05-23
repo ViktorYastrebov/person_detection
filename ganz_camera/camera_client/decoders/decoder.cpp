@@ -3,7 +3,10 @@
 
 extern "C" {
 #include "libswscale/swscale.h"
+#include "libavutil/imgutils.h"
 }
+
+#include <iostream>
 
 namespace ganz_camera {
     namespace decoders {
@@ -18,10 +21,10 @@ namespace ganz_camera {
             if (!codec_) {
                 throw std::exception("Count not create codec by avcodec_find_decoder");
             }
-            //parser_ = av_parser_init(codec_->id);
-            //if (!parser_) {
-            //    throw std::exception("av_parser_init has failed");
-            //}
+            parser_ = av_parser_init(codec_->id);
+            if (!parser_) {
+                throw std::exception("av_parser_init has failed");
+            }
             codec_ctx_ = avcodec_alloc_context3(codec_);
             if (!codec_ctx_) {
                 throw std::exception("avcodec_alloc_context3 has failed");
@@ -46,48 +49,88 @@ namespace ganz_camera {
             if (!data_length) {
                 return cv::Mat();
             }
+            unsigned char *data_ptr = new unsigned char[data_length + AV_INPUT_BUFFER_PADDING_SIZE];
+            std::memcpy(data_ptr, data, data_length);
+            std::memset(data_ptr + data_length, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 
-            packet_->data = data;
-            packet_->size = data_length;
+            int ret = av_parser_parse2(parser_,
+                codec_ctx_,
+                &packet_->data,
+                &packet_->size,
+                data_ptr, data_length, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0
+            );
 
             int got_frame = 0;
             int processed_len = avcodec_decode_video2(codec_ctx_, frame_, &got_frame, packet_);
             if (processed_len < 0) {
+                delete[] data_ptr;
                 return cv::Mat();
             }
 
-            int BGRsize = avpicture_get_size(AV_PIX_FMT_BGR24, codec_ctx_->width, codec_ctx_->height);
-            uint8_t *out_buffer = (uint8_t *)av_malloc(BGRsize);
+            //if(ret > 0) {
+            //    if (packet_->size) {
+            //        ret = avcodec_send_packet(codec_ctx_, packet_);
+            //        if (ret > 0) {
+            //            ret = avcodec_receive_frame(codec_ctx_, frame_);
+            //            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            //                delete[] data_ptr;
+            //                return cv::Mat();
+            //            }
+            //            uint8_t *src_data[4];
+            //            //int av_image_fill_pointers
+            //        }
+            //    }
+            //}
+            //delete[] data_ptr;
+            //return cv::Mat();
 
-            AVFrame *BGR_frame_ = av_frame_alloc();
-            avpicture_fill((AVPicture *)BGR_frame_, out_buffer, AV_PIX_FMT_BGR24, codec_ctx_->width, codec_ctx_->height);
 
-            struct SwsContext *img_convert_ctx = sws_getContext(codec_ctx_->width,
-                                                                codec_ctx_->height,
-                                                                codec_ctx_->pix_fmt,
-                                                                codec_ctx_->width,
-                                                                codec_ctx_->height,
-                                                                AV_PIX_FMT_BGR24,
-                                                                SWS_BICUBIC, NULL, NULL, NULL);
-            //pCvMat.create(cv::Size(codec_ctx_->width, codec_ctx_->height), CV_8UC3);
-            
-            if (got_frame) {
-                sws_scale(img_convert_ctx,
-                         (const uint8_t *const *)frame_->data,
-                         frame_->linesize, 0,
-                         codec_ctx_->height,
-                         BGR_frame_->data,
-                         BGR_frame_->linesize);
 
-                cv::Mat ret(cv::Size(codec_ctx_->width, codec_ctx_->height), CV_8UC3);
-                std::memcpy(ret.data, out_buffer, BGRsize);
-                av_free(out_buffer);
-                av_frame_free(&BGR_frame_);
-                return ret;
-            }
-            av_frame_free(&BGR_frame_);
-            av_free(out_buffer);
-            return cv::Mat();
+
+        //    packet_->data = data_ptr;
+        //    packet_->size = data_length;
+
+        //    int got_frame = 0;
+        //    int processed_len = avcodec_decode_video2(codec_ctx_, frame_, &got_frame, packet_);
+        //    if (processed_len < 0) {
+        //        return cv::Mat();
+        //    }
+        //    packet_->size = 0;
+        //    packet_->data = nullptr;
+
+        //    int BGRsize = avpicture_get_size(AV_PIX_FMT_BGR24, codec_ctx_->width, codec_ctx_->height);
+        //    uint8_t *out_buffer = (uint8_t *)av_malloc(BGRsize);
+
+        //    AVFrame *BGR_frame_ = av_frame_alloc();
+        //    avpicture_fill((AVPicture *)BGR_frame_, out_buffer, AV_PIX_FMT_BGR24, codec_ctx_->width, codec_ctx_->height);
+
+        //    struct SwsContext *img_convert_ctx = sws_getContext(codec_ctx_->width,
+        //                                                        codec_ctx_->height,
+        //                                                        codec_ctx_->pix_fmt,
+        //                                                        codec_ctx_->width,
+        //                                                        codec_ctx_->height,
+        //                                                        AV_PIX_FMT_BGR24,
+        //                                                        SWS_BICUBIC, NULL, NULL, NULL);
+        //    //pCvMat.create(cv::Size(codec_ctx_->width, codec_ctx_->height), CV_8UC3);
+        //    
+        //    if (got_frame) {
+        //        sws_scale(img_convert_ctx,
+        //                 (const uint8_t *const *)frame_->data,
+        //                 frame_->linesize, 0,
+        //                 codec_ctx_->height,
+        //                 BGR_frame_->data,
+        //                 BGR_frame_->linesize);
+
+        //        cv::Mat ret(cv::Size(codec_ctx_->width, codec_ctx_->height), CV_8UC3);
+        //        std::memcpy(ret.data, out_buffer, BGRsize);
+        //        av_free(out_buffer);
+        //        av_frame_free(&BGR_frame_);
+        //        return ret;
+        //    }
+        //    av_frame_free(&BGR_frame_);
+        //    av_free(out_buffer);
+        //    return cv::Mat();
+        //}
         }
     }
 }

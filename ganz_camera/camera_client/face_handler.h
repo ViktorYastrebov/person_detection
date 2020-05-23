@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "connection.h"
+//#include "camera_client/stream_data_holder.h"
 
 #include "json/json.hpp"
 

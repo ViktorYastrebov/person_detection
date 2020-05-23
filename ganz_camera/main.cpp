@@ -5,10 +5,10 @@
 
 #include "camera_client/sdk_context.h"
 #include "camera_client/face_handler.h"
-#include "camera_client/video_stream.h"
+#include "camera_client/video_stream_opencv.h"
+#include "sdks.h"
 
 #include <opencv2/opencv.hpp>
-#include "sdks.h"
 
 
 //INFO: PROOF OF CONCEPT
@@ -94,28 +94,22 @@ int main(int argc, char *argv[])
 
     ganz_camera::SDKContext context;
     {
-        int ret = cv::startWindowThread();
-        cv::namedWindow("Display");
-
-        //DO NOT WORK like that
-        auto display = [](cv::Mat ret) -> void {
-            //cv::imshow("Display", ret);
-            //cv::waitKey(20);
-        };
-
-        ganz_camera::SDKContext ::ConnectionPtr video_stream_con = context.buildConnection(host, user, pwd, is_ssl);
-        ganz_camera::VideoStream stream(*video_stream_con, 1, ganz_camera::VideoStream::HD, display);
+        ganz_camera::StreamDataHolder dataHolder;
         ganz_camera::SDKContext::ConnectionPtr face_conn = context.buildConnection(host, user, pwd, is_ssl);
         ganz_camera::FaceHandler faceHandler(*face_conn);
 
-        //SOME INFINIT LOOP
-        std::string input;
-        while (std::getline(std::cin, input)) {
-            if (input == "exit") {
-                break;
+        std::string url = "rtsp://" + user + ":" + pwd + "@" + host + ":9554/snl/live/1/1";
+        ganz_camera::SimpleVideoStream video_stream(dataHolder, url);
+
+        video_stream.Start();
+        dataHolder.start([](ganz_camera::StreamDataHolder &owner, cv::Mat data) -> void {
+            cv::imshow("Display", data);
+            int key = cv::waitKey(1);
+            if (key == 27) {
+                owner.stop();
             }
-        }
-        cv::destroyAllWindows();
+        });
+        video_stream.Stop();
     }
     return 0;
 }
