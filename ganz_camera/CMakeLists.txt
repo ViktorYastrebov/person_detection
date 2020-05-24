@@ -70,7 +70,7 @@ endif()
 find_package(OpenCV REQUIRED PATHS ${INSTALLED_OPENCV_PATH} NO_DEFAULT_PATH)
 #find_package(TBB REQUIRED tbb)
 
-add_definitions(-DSDKS_USE_DLL)
+add_definitions(-DSDKS_USE_DLL -D__RJ_WIN64__)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 					${CAMERA_SDK_INCLUDE}
@@ -99,6 +99,11 @@ add_executable(server_demo 	"main.cpp"
 							# "camera_client/decoders/decoder.h"
 							"camera_client/stream_data_holder.h"
 							"camera_client/stream_data_holder.cpp"
+							"camera_client/face_data.cpp"
+							"camera_client/face_data.h"
+							# Additional
+							"json/cJSON.h"
+							"json/cJSON.cpp"
 							)
 
 							

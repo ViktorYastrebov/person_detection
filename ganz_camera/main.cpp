@@ -96,13 +96,19 @@ int main(int argc, char *argv[])
     {
         ganz_camera::StreamDataHolder dataHolder;
         ganz_camera::SDKContext::ConnectionPtr face_conn = context.buildConnection(host, user, pwd, is_ssl);
-        ganz_camera::FaceHandler faceHandler(*face_conn);
+        ganz_camera::FaceHandler faceHandler(dataHolder, *face_conn);
 
         std::string url = "rtsp://" + user + ":" + pwd + "@" + host + ":9554/snl/live/1/1";
         ganz_camera::SimpleVideoStream video_stream(dataHolder, url);
 
         video_stream.Start();
-        dataHolder.start([](ganz_camera::StreamDataHolder &owner, cv::Mat data) -> void {
+        dataHolder.start([](ganz_camera::StreamDataHolder &owner,
+                            cv::Mat data, const ganz_camera::FaceDataVector& faces) -> void
+        {
+            for (const auto &face : faces.faces_data_) {
+                cv::Rect face_rect(face.x, face.y, face.width, face.height);
+                cv::rectangle(data, face_rect, cv::Scalar(0, 0, 255));
+            }
             cv::imshow("Display", data);
             int key = cv::waitKey(1);
             if (key == 27) {
