@@ -112,22 +112,16 @@ int main(int argc, char *argv[])
         dataHolder.start([](ganz_camera::StreamDataHolder &owner,
                             cv::Mat data, const ganz_camera::FaceDataVector& faces) -> void
         {
-            std::cout << "get data from queue " << std::endl;
-            cv::imshow("Display", data);
+            cv::Mat clone = data.clone();
+            for (const auto &face : faces.faces_data_) {
+                cv::Rect face_rect(face.x, face.y, face.width, face.height);
+                cv::rectangle(clone, face_rect, cv::Scalar(0, 0, 255));
+            }
+            cv::imshow("Display", clone);
             int key = cv::waitKey(1);
             if (key == 27) {
                 owner.stop();
             }
-
-            //for (const auto &face : faces.faces_data_) {
-            //    cv::Rect face_rect(face.x, face.y, face.width, face.height);
-            //    cv::rectangle(data, face_rect, cv::Scalar(0, 0, 255));
-            //}
-            //cv::imshow("Display", data);
-            //int key = cv::waitKey(1);
-            //if (key == 27) {
-            //    owner.stop();
-            //}
         });
         video_stream.Stop();
         cv::destroyAllWindows();

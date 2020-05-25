@@ -11,8 +11,13 @@ extern "C" {
 namespace ganz_camera {
     namespace decoders {
 
+        static void avlog_cb(void *, int level, const char * szFmt, va_list varg) {
+            //do nothing...
+        }
+
         H264Decoder::H264Decoder()
         {
+            av_log_set_callback(avlog_cb);
             packet_ = av_packet_alloc();
             if (!packet_) {
                 throw std::exception("av_packet_alloc has failed");
