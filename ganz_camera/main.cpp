@@ -79,17 +79,19 @@ int main(int argc, char *argv[])
     unsigned short port = 0;
     std::string user;
     std::string pwd;
+    std::string str_port;
     bool is_ssl = false;
 
-    if (argc != 5) {
-        std::cout << "Usage: server_demo.exe ssl/no-ssl IP user password";
+    if (argc != 6) {
+        std::cout << "Usage: server_demo.exe ssl/no-ssl IP port user password";
         return 0;
     } else {
         std::string test_ssl(argv[1]);
         is_ssl = test_ssl == "ssl";
         host = std::string(argv[2]);
-        user = std::string(argv[3]);
-        pwd = std::string(argv[4]);
+        str_port = std::string(argv[3]);
+        user = std::string(argv[4]);
+        pwd = std::string(argv[5]);
     }
 
     ganz_camera::SDKContext context;
@@ -98,24 +100,33 @@ int main(int argc, char *argv[])
         ganz_camera::SDKContext::ConnectionPtr face_conn = context.buildConnection(host, user, pwd, is_ssl);
         ganz_camera::FaceHandler faceHandler(dataHolder, *face_conn);
 
-        std::string url = "rtsp://" + user + ":" + pwd + "@" + host + ":9554/snl/live/1/1";
-        ganz_camera::SimpleVideoStream video_stream(dataHolder, url);
+        std::string url = "rtsp://" + user + ":" + pwd + "@" + host + ":" + str_port + "/snl/live/1/1";
+        std::cout << "connecting url : " << url << std::endl;
+        try {
+            ganz_camera::SimpleVideoStream video_stream(dataHolder, url);
 
-        video_stream.Start();
-        dataHolder.start([](ganz_camera::StreamDataHolder &owner,
-                            cv::Mat data, const ganz_camera::FaceDataVector& faces) -> void
-        {
-            for (const auto &face : faces.faces_data_) {
-                cv::Rect face_rect(face.x, face.y, face.width, face.height);
-                cv::rectangle(data, face_rect, cv::Scalar(0, 0, 255));
-            }
-            cv::imshow("Display", data);
-            int key = cv::waitKey(1);
-            if (key == 27) {
-                owner.stop();
-            }
-        });
-        video_stream.Stop();
+            video_stream.Start();
+            dataHolder.start([](ganz_camera::StreamDataHolder &owner,
+                cv::Mat data, const ganz_camera::FaceDataVector& faces) -> void
+            {
+                for (const auto &face : faces.faces_data_) {
+                    cv::Rect face_rect(face.x, face.y, face.width, face.height);
+                    cv::rectangle(data, face_rect, cv::Scalar(0, 0, 255));
+                }
+                cv::imshow("Display", data);
+                int key = cv::waitKey(1);
+                if (key == 27) {
+                    owner.stop();
+                }
+            });
+            video_stream.Stop();
+        }
+        catch (const std::exception &e) {
+            std::cout << "Error occurs : " << e.what() << std::endl;
+        }
+        catch (...) {
+            std::cout << "Unknown error occurs, something terrible" << std::endl;
+        }
     }
     return 0;
 }
