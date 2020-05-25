@@ -74,7 +74,7 @@ add_definitions(-DSDKS_USE_DLL -D__RJ_WIN64__)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 					${CAMERA_SDK_INCLUDE}
-					# ${FFMPEG_INCLUDE_DIR} 
+					${FFMPEG_INCLUDE_DIR} 
 					${OpenCV_INCLUDE_DIRS} 
 					${_TBB_INCLUDE_DIR})
 					
@@ -93,10 +93,10 @@ add_executable(server_demo 	"main.cpp"
 							"camera_client/base_video_stream.cpp"
 							"camera_client/video_stream_opencv.h"
 							"camera_client/video_stream_opencv.cpp"
-							# "camera_client/video_stream.cpp"
-							# "camera_client/video_stream.h"
-							# "camera_client/decoders/decoder.cpp"
-							# "camera_client/decoders/decoder.h"
+							"camera_client/video_stream.cpp"
+							"camera_client/video_stream.h"
+							"camera_client/decoders/decoder.cpp"
+							"camera_client/decoders/decoder.h"
 							"camera_client/stream_data_holder.h"
 							"camera_client/stream_data_holder.cpp"
 							"camera_client/face_data.cpp"
@@ -110,7 +110,7 @@ add_executable(server_demo 	"main.cpp"
 							
 target_link_libraries( server_demo 
 						${CAMERA_SDK_LIB_PATH}/sdk.lib 
-						# ${FFMPEG_LIBS}
+						${FFMPEG_LIBS}
 						${OpenCV_LIBS}
 						${_TBB_LIBS})
 
