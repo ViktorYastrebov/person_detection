@@ -4,6 +4,8 @@
 #include <thread>
 #include <chrono>
 
+#include <iostream>
+
 namespace ganz_camera {
 
     namespace callback_wrapper {
@@ -70,6 +72,8 @@ namespace ganz_camera {
     void VideoStream::handle(unsigned char *data, int data_length) {
         cv::Mat frame = h264_decoder_.decode(data, data_length);
         if (!frame.empty()) {
+            //std::cout << "Has valid mat data";
+            //INFO: it works fine without it. tested !!!
             BaseVideoStream::handleFrame(frame);
         }
     }

@@ -51,7 +51,8 @@ endif()
 # INFO: set directory to the base of built OpenCV
 if (${BUILD_TYPE} STREQUAL "debug")
 	# set(INSTALLED_OPENCV_PATH "F:/sdks/building/opencv/opencv-4.2/opencv-4.2.0_build_dbg_opencl")
-	set(INSTALLED_OPENCV_PATH "F:/sdks/building/opencv/opencv-4.2/opencv-4.2.0_build_dbg")
+	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_debug")
+	# set(INSTALLED_OPENCV_PATH "F:/sdks/building/opencv/opencv-4.2/opencv-4.2.0_build_dbg")
 	# set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu_debug")
 	set(_TBB_LIBS ${_TBB_LIB_DIR}/tbb_debug.lib
 				  ${_TBB_LIB_DIR}/tbb_preview_debug.lib
