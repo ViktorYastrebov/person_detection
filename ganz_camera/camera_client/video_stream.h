@@ -15,7 +15,7 @@ namespace ganz_camera {
         void stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
     }
 
-    class [[deprecated("It does not work due to Decode problem(ffmpeg with undefined behaviour)")]]
+    class /*[[deprecated("It does not work due to Decode problem(ffmpeg with undefined behaviour)")]]*/
     VideoStream : public BaseVideoStream {
     public:
         enum STREAM_TYPE: int {

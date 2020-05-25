@@ -15,6 +15,7 @@ namespace ganz_camera {
             if (p_result) {
                 ganz_camera::FaceHandler* owner = static_cast<ganz_camera::FaceHandler*>(p_obj);
                 const char *json_data_ptr = static_cast<char*>(*p_result);
+                std::cout << "data:" << json_data_ptr << std::endl;
                 FaceDataVector faces;
                 faces.fromJsonData(json_data_ptr);
                 owner->handle(std::move(faces));

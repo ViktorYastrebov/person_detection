@@ -51,6 +51,7 @@ endif()
 # INFO: set directory to the base of built OpenCV
 if (${BUILD_TYPE} STREQUAL "debug")
 	# set(INSTALLED_OPENCV_PATH "F:/sdks/building/opencv/opencv-4.2/opencv-4.2.0_build_dbg_opencl")
+	#set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_debug")
 	set(INSTALLED_OPENCV_PATH "F:/sdks/building/opencv/opencv-4.2/opencv-4.2.0_build_dbg")
 	# set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.2_gpu_debug")
 	set(_TBB_LIBS ${_TBB_LIB_DIR}/tbb_debug.lib
@@ -74,7 +75,7 @@ add_definitions(-DSDKS_USE_DLL -D__RJ_WIN64__)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 					${CAMERA_SDK_INCLUDE}
-					# ${FFMPEG_INCLUDE_DIR} 
+					${FFMPEG_INCLUDE_DIR} 
 					${OpenCV_INCLUDE_DIRS} 
 					${_TBB_INCLUDE_DIR})
 					
@@ -93,10 +94,10 @@ add_executable(server_demo 	"main.cpp"
 							"camera_client/base_video_stream.cpp"
 							"camera_client/video_stream_opencv.h"
 							"camera_client/video_stream_opencv.cpp"
-							# "camera_client/video_stream.cpp"
-							# "camera_client/video_stream.h"
-							# "camera_client/decoders/decoder.cpp"
-							# "camera_client/decoders/decoder.h"
+							"camera_client/video_stream.cpp"
+							"camera_client/video_stream.h"
+							"camera_client/decoders/decoder.cpp"
+							"camera_client/decoders/decoder.h"
 							"camera_client/stream_data_holder.h"
 							"camera_client/stream_data_holder.cpp"
 							"camera_client/face_data.cpp"
@@ -110,7 +111,7 @@ add_executable(server_demo 	"main.cpp"
 							
 target_link_libraries( server_demo 
 						${CAMERA_SDK_LIB_PATH}/sdk.lib 
-						# ${FFMPEG_LIBS}
+						${FFMPEG_LIBS}
 						${OpenCV_LIBS}
 						${_TBB_LIBS})
 
