@@ -2,7 +2,7 @@
 
 #include "connection.h"
 
-#include "json/json.hpp"
+#include "camera_client/alarm_data.h"
 
 namespace ganz_camera {
 
@@ -17,7 +17,7 @@ namespace ganz_camera {
     private:
         friend void callback_wrapper::alarm_handler(unsigned int handle, void** p_data, void* p_obj);
 
-        void handle(const nlohmann::json &json);
+        void handle(const AlarmData &alarm);
 
         Connection &owner_;
     };

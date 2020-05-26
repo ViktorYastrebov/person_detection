@@ -8,6 +8,12 @@ namespace ganz_camera {
         void disconnect_handler(unsigned int handle, void* p_obj);
     }
 
+    enum STREAM_TYPE : int {
+        HD = 1,
+        SD = 2
+        //NOT_SUPPORTED_SMOOTH = 3
+    };
+
     class Connection final {
     public:
         Connection(const std::string &host, const std::string &user, const std::string &pwd, bool ssl = false);

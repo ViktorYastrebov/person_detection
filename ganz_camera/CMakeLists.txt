@@ -102,6 +102,8 @@ add_executable(server_demo 	"main.cpp"
 							"camera_client/stream_data_holder.cpp"
 							"camera_client/face_data.cpp"
 							"camera_client/face_data.h"
+							"camera_client/alarm_data.cpp"
+							"camera_client/alarm_data.h"
 							# Additional
 							"json/cJSON.h"
 							"json/cJSON.cpp"

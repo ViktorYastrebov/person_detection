@@ -20,7 +20,7 @@ namespace ganz_camera {
 
     class FaceHandler {
     public:
-        FaceHandler(StreamDataHolder &holder, Connection &owner);
+        FaceHandler(StreamDataHolder &holder, Connection &owner, const int channel, STREAM_TYPE type);
         ~FaceHandler();
 
         FaceHandler(const FaceHandler &) = delete;
@@ -35,6 +35,8 @@ namespace ganz_camera {
             //void handle(const nlohmann::json &json, const char *picture);
         StreamDataHolder &holder_;
         Connection &owner_;
+        int channel_;
+        STREAM_TYPE stream_type_;
         int stream_id_;
     };
 }

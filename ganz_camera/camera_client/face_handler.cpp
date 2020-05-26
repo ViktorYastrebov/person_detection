@@ -23,11 +23,14 @@ namespace ganz_camera {
         }
     }
 
-     FaceHandler::FaceHandler(StreamDataHolder &holder, Connection &owner)
+     FaceHandler::FaceHandler(StreamDataHolder &holder, Connection &owner, const int channel, STREAM_TYPE type)
          : holder_(holder)
          , owner_(owner)
+         , channel_(channel)
+         , stream_type_(type)
      {
-          stream_id_ = sdks_dev_face_detect_start(owner_.getHandle(), 1, 1, 5, callback_wrapper::face_detection_handler, this);
+         // 4: Small picture. 5: Big picture. 7: size chart
+          stream_id_ = sdks_dev_face_detect_start(owner_.getHandle(), channel_, stream_type_, 4, callback_wrapper::face_detection_handler, this);
           if (stream_id_ <= 0) {
               throw std::exception("sdks_dev_face_detect_start has failed");
           }

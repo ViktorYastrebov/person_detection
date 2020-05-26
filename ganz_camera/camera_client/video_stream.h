@@ -18,12 +18,6 @@ namespace ganz_camera {
     class /*[[deprecated("It does not work due to Decode problem(ffmpeg with undefined behaviour)")]]*/
     VideoStream : public BaseVideoStream {
     public:
-        enum STREAM_TYPE: int {
-            HD = 1,
-            SD = 2
-            //NOT_SUPPORTED_SMOOTH = 3
-        };
-
         VideoStream(StreamDataHolder &holder, Connection &owner, const int channel, STREAM_TYPE type);
 
         virtual void Start() override;
