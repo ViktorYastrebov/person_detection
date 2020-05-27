@@ -41,8 +41,7 @@ namespace ganz_camera {
             VideoStream *owner = static_cast<VideoStream*>(p_obj);
             if (p_data != NULL) {
                 ST_AVFrameData *p_frame = (ST_AVFrameData*)p_data;
-                 unsigned char *data_ptr = (unsigned char*)p_frame->pszData;
-                 owner->handle(data_ptr, p_frame->nDataLength);
+                 owner->handle(p_frame);
             }
         }
     }
@@ -69,12 +68,12 @@ namespace ganz_camera {
     VideoStream::~VideoStream()
     {}
 
-    void VideoStream::handle(unsigned char *data, int data_length) {
-        cv::Mat frame = h264_decoder_.decode(data, data_length);
+    void VideoStream::handle(const ST_AVFrameData *native_frame) {
+        unsigned char *data_ptr = (unsigned char*)native_frame->pszData;
+        cv::Mat frame = h264_decoder_.decode(data_ptr, native_frame->nDataLength);
         if (!frame.empty()) {
-            //std::cout << "Has valid mat data";
-            //INFO: it works fine without it. tested !!!
-            BaseVideoStream::handleFrame(frame);
+            FrameInfo info{ frame, native_frame->nAbsoluteTimeStamp, native_frame->nRelativeTimeStamp };
+            BaseVideoStream::handleFrame(std::move(info));
         }
     }
 }

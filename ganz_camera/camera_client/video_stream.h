@@ -5,11 +5,9 @@
 #include "camera_client/stream_data_holder.h"
 #include "decoders/decoder.h"
 
-#include <atomic>
+#include "sdks.h"
 
 namespace ganz_camera {
-
-    // https://stackoverflow.com/questions/29263090/ffmpeg-avframe-to-opencv-mat-conversion
 
     namespace callback_wrapper {
         void stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
@@ -26,14 +24,13 @@ namespace ganz_camera {
         virtual ~VideoStream();
     private:
         friend void callback_wrapper::stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
-        void handle(unsigned char *data, int data_length);
+        void handle(const ST_AVFrameData *);
     private:
         Connection &owner_;
         STREAM_TYPE stream_type_;
         int channel_;
         int stream_id_;
         decoders::H264Decoder h264_decoder_;
-        //std::atomic_bool stop_flag_;
     };
 
 }

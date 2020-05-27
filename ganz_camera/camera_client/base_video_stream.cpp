@@ -1,4 +1,5 @@
 #include "base_video_stream.h"
+#include "camera_client/stream_data_holder.h"
 
 namespace ganz_camera {
 
@@ -6,9 +7,8 @@ namespace ganz_camera {
         :data_holder_(holder)
     {}
 
-    void BaseVideoStream::handleFrame(cv::Mat frame)
+    void BaseVideoStream::handleFrame(FrameInfo &&frameInfo)
     {
-        data_holder_.put(frame);
+        data_holder_.put(std::move(frameInfo));
     }
-
 }

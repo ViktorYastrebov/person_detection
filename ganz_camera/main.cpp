@@ -31,9 +31,17 @@ int main(int argc, char *argv[])
         pwd = std::string(argv[4]);
     }
 
+    //cv::startWindowThread();
+    //cv::namedWindow("Display1");
+    //cv::namedWindow("Display2");
+
+    // INFO: I really not like that SDK creates thread pool and 
+    //       each of StreamDataHolder need the thread itself too.!!!
+    //IT's the problem on OpenCV UI as far as I can see.
+
     ganz_camera::SDKContext context;
     {
-        const int channel = 1;
+        constexpr int channel = 1;
         ganz_camera::StreamDataHolder dataHolder;
         ganz_camera::SDKContext::ConnectionPtr face_conn = context.buildConnection(host, user, pwd, is_ssl);
         ganz_camera::FaceHandler faceHandler(dataHolder, *face_conn, channel, ganz_camera::STREAM_TYPE::HD);
@@ -41,26 +49,55 @@ int main(int argc, char *argv[])
         ganz_camera::SDKContext::ConnectionPtr video_conn = context.buildConnection(host, user, pwd, is_ssl);
         ganz_camera::VideoStream video_stream(dataHolder, *video_conn, channel, ganz_camera::STREAM_TYPE::HD);
 
-        cv::startWindowThread();
-        cv::namedWindow("Display");
-
         video_stream.Start();
-        dataHolder.start([](ganz_camera::StreamDataHolder &owner,
-                            cv::Mat data, const ganz_camera::FaceDataVector& faces) -> void
+        dataHolder.start([&](ganz_camera::StreamDataHolder &owner,
+                            const ganz_camera::FrameInfo &info, const ganz_camera::FaceDataVector& faces) -> void
         {
-            cv::Mat clone = data.clone();
+            cv::Mat clone = info.frame.clone();
             for (const auto &face : faces.faces_data_) {
                 cv::Rect face_rect(face.x, face.y, face.width, face.height);
                 cv::rectangle(clone, face_rect, cv::Scalar(0, 0, 255));
+                std::cout << "Face detected :" << std::endl;
+                std::cout << "Face Temperature: " << face.temperature << std::endl;
             }
-            cv::imshow("Display", clone);
+            //std::cout << "Display1 processed" << std::endl;
+            cv::imshow("Display1", clone);
             int key = cv::waitKey(1);
             if (key == 27) {
+                video_stream.Stop();
                 owner.stop();
             }
         });
-        video_stream.Stop();
-        cv::destroyAllWindows();
+        
+
+        //constexpr int channel2 = 2;
+        //ganz_camera::StreamDataHolder dataHolder2;
+        //ganz_camera::SDKContext::ConnectionPtr video_conn2 = context.buildConnection(host, user, pwd, is_ssl);
+        //ganz_camera::VideoStream video_stream2(dataHolder2, *video_conn2, channel2, ganz_camera::STREAM_TYPE::HD);
+
+        //video_stream2.Start();
+        //dataHolder2.start([&](ganz_camera::StreamDataHolder &owner,
+        //    const ganz_camera::FrameInfo &info, const ganz_camera::FaceDataVector& faces) -> void
+        //{
+        //    cv::Mat clone = info.frame.clone();
+        //    for (const auto &face : faces.faces_data_) {
+        //        cv::Rect face_rect(face.x, face.y, face.width, face.height);
+        //        cv::rectangle(clone, face_rect, cv::Scalar(0, 0, 255));
+        //    }
+        //    std::cout << "Display2 processed" << std::endl;
+        //    //cv::imshow("Display2", clone);
+        //    //int key = cv::waitKey(1);
+        //    //if (key == 27) {
+        //    //    owner.stop();
+        //    //    video_stream2.Stop();
+        //    //}
+        //});
+
+        std::cout << "Please type something" << std::endl;
+        std::string input;
+        std::getline(std::cin, input);
+
+        //cv::destroyAllWindows();
     }
     return 0;
 }
