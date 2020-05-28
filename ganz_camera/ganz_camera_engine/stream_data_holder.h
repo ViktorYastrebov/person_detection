@@ -1,16 +1,19 @@
 #pragma once
 
+#include "base_video_stream.h"
+#include "face_data.h"
+
 #include <tbb/concurrent_queue.h>
-#include "camera_client/base_video_stream.h"
-
-#include <atomic>
 #include <functional>
+#include <atomic>
 
-#include "camera_client/face_data.h"
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
 
 namespace ganz_camera {
 
-    class StreamDataHolder {
+    class GANZ_CAMERA_ENGINE_DECL StreamDataHolder {
     public:
         using EntryProcessFunc = std::function<void(StreamDataHolder &holder, const FrameInfo &info, const FaceDataVector& faces)>;
 
@@ -36,3 +39,5 @@ namespace ganz_camera {
         std::thread runner_;
     };
 }
+
+#pragma warning(pop)

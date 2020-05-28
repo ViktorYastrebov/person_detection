@@ -1,11 +1,14 @@
 #pragma once
 
-#include "camera_client/base_video_stream.h"
-#include "camera_client/connection.h"
-#include "camera_client/stream_data_holder.h"
+#include "base_video_stream.h"
+#include "connection.h"
+#include "stream_data_holder.h"
 #include "decoders/decoder.h"
 
 #include "sdks.h"
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
 
 namespace ganz_camera {
 
@@ -13,8 +16,7 @@ namespace ganz_camera {
         void stream_handler(unsigned int handle, int stream_id, void* p_data, void* p_obj);
     }
 
-    class /*[[deprecated("It does not work due to Decode problem(ffmpeg with undefined behaviour)")]]*/
-    VideoStream : public BaseVideoStream {
+    class GANZ_CAMERA_ENGINE_DECL VideoStream : public BaseVideoStream {
     public:
         VideoStream(StreamDataHolder &holder, Connection &owner, const int channel, STREAM_TYPE type);
 
@@ -32,5 +34,6 @@ namespace ganz_camera {
         int stream_id_;
         decoders::H264Decoder h264_decoder_;
     };
-
 }
+
+#pragma warning(pop)

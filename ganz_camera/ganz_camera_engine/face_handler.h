@@ -1,8 +1,9 @@
 #pragma once 
 
+#include "decl_spec.h"
 #include "connection.h"
-#include "camera_client/stream_data_holder.h"
-#include "camera_client/face_data.h"
+#include "stream_data_holder.h"
+#include "face_data.h"
 
 namespace ganz_camera {
 
@@ -11,7 +12,7 @@ namespace ganz_camera {
         void face_callback(unsigned int handle, int pic_type, void* p_data, int *data_len, void** p_result, void* p_obj);
     }
 
-    class FaceHandler {
+    class GANZ_CAMERA_ENGINE_DECL FaceHandler {
     public:
         FaceHandler(StreamDataHolder &holder, Connection &owner, const int channel, STREAM_TYPE type);
         ~FaceHandler();

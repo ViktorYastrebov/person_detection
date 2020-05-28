@@ -1,4 +1,4 @@
-#include "camera_client/alarm_data.h"
+#include "alarm_data.h"
 
 #include "json/cJSON.h"
 

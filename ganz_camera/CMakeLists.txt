@@ -14,6 +14,7 @@ endif()
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
+set(LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
 
 set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps)
 
@@ -65,62 +66,12 @@ else()
 				  ${_TBB_LIB_DIR}/tbbbind.lib
 				  )
 endif()				
-				
-				
-				
-find_package(OpenCV REQUIRED PATHS ${INSTALLED_OPENCV_PATH} NO_DEFAULT_PATH)
-#find_package(TBB REQUIRED tbb)
 
-add_definitions(-DSDKS_USE_DLL -D__RJ_WIN64__)
+add_subdirectory(ganz_camera_engine)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}
-					${CAMERA_SDK_INCLUDE}
-					${FFMPEG_INCLUDE_DIR} 
-					${OpenCV_INCLUDE_DIRS} 
-					${_TBB_INCLUDE_DIR})
-					
-message(STATUS "Include dirs: ${CMAKE_CURRENT_SOURCE_DIR} ${CAMERA_SDK_INCLUDE} ${FFMPEG_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${_TBB_INCLUDE_DIR}")
+add_executable(demo "main.cpp")
+target_link_libraries(demo ganz_camera_engine)
 
-add_executable(server_demo 	"main.cpp"
-							"camera_client/connection.cpp"
-							"camera_client/connection.h"
-							"camera_client/stream_data_holder.h"
-							"camera_client/stream_data_holder.cpp"
-							"camera_client/sdk_context.cpp"
-							"camera_client/sdk_context.h"
-							"camera_client/face_handler.cpp"
-							"camera_client/face_handler.h"
-							"camera_client/alarm_handler.cpp"
-							"camera_client/alarm_handler.h"
-							"camera_client/base_video_stream.h"
-							"camera_client/base_video_stream.cpp"
-							# "camera_client/video_stream_opencv.h"
-							# "camera_client/video_stream_opencv.cpp"
-							"camera_client/video_stream.cpp"
-							"camera_client/video_stream.h"
-							"camera_client/decoders/decoder.cpp"
-							"camera_client/decoders/decoder.h"
-							"camera_client/face_data.cpp"
-							"camera_client/face_data.h"
-							"camera_client/alarm_data.cpp"
-							"camera_client/alarm_data.h"
-							"camera_client/history_recoder.cpp"
-							"camera_client/history_recoder.h"
-							# Additional
-							"json/cJSON.h"
-							"json/cJSON.cpp"
-							)
 
-							
-							
-target_link_libraries( server_demo 
-						${CAMERA_SDK_LIB_PATH}/sdk.lib 
-						${FFMPEG_LIBS}
-						${OpenCV_LIBS}
-						${_TBB_LIBS})
 
-# ADD_CUSTOM_COMMAND(TARGET server_demo POST_BUILD
-#               COMMAND copy "${CAMERA_SDK_LIB_PATH}\\*.dll"
-#               "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\\$<CONFIGURATION>"
-#               COMMENT "Copying sdk.dll..."
-#               )
+

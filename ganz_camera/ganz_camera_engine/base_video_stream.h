@@ -1,19 +1,22 @@
 #pragma once
 
-#include "camera_client/connection.h"
+#include "connection.h"
 #include <opencv2/core.hpp>
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
 
 namespace ganz_camera {
 
-    class StreamDataHolder;
+    class GANZ_CAMERA_ENGINE_DECL StreamDataHolder;
 
-    struct FrameInfo {
+    struct GANZ_CAMERA_ENGINE_DECL FrameInfo {
         cv::Mat frame;
         long long nAbsoluteTimeStamp;
         long long nRelativeTimeStamp;
     };
 
-    class BaseVideoStream {
+    class GANZ_CAMERA_ENGINE_DECL BaseVideoStream {
     public:
         BaseVideoStream(StreamDataHolder &holder);
         virtual ~BaseVideoStream() = default;
@@ -27,3 +30,5 @@ namespace ganz_camera {
         StreamDataHolder &data_holder_;
     };
 }
+
+#pragma warning(pop)

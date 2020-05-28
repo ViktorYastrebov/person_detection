@@ -1,4 +1,4 @@
-#include "camera_client/video_stream.h"
+#include "video_stream.h"
 #include "sdks.h"
 
 #include <thread>

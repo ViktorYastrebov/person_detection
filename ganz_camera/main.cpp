@@ -1,13 +1,9 @@
 #include <iostream>
 #include <string>
 
-#include "json/json.hpp"
-
-#include "camera_client/sdk_context.h"
-#include "camera_client/face_handler.h"
-#include "camera_client/video_stream_opencv.h"
-#include "camera_client/video_stream.h"
-#include "sdks.h"
+#include "sdk_context.h"
+#include "face_handler.h"
+#include "video_stream.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -37,7 +33,10 @@ int main(int argc, char *argv[])
 
     // INFO: I really not like that SDK creates thread pool and 
     //       each of StreamDataHolder need the thread itself too.!!!
-    //IT's the problem on OpenCV UI as far as I can see.
+    //       it's the problem on OpenCV UI as far as I can see.
+
+
+    std::cout << "To close window please press Esc key" << std::endl;
 
     ganz_camera::SDKContext context;
     {
@@ -60,10 +59,10 @@ int main(int argc, char *argv[])
                 std::cout << "Face detected :" << std::endl;
                 std::cout << "Face Temperature: " << face.temperature << std::endl;
             }
-            //std::cout << "Display1 processed" << std::endl;
             cv::imshow("Display1", clone);
             int key = cv::waitKey(1);
             if (key == 27) {
+                // ORDER IS IMPORTANT
                 video_stream.Stop();
                 owner.stop();
             }
@@ -96,6 +95,8 @@ int main(int argc, char *argv[])
         std::cout << "Please type something" << std::endl;
         std::string input;
         std::getline(std::cin, input);
+        // INFO: if we reash here wihtout video_stream.stop() &  owner.stop() called it brings to crash.
+        // It can be handled simple: rewrite the stop with checking of valid handle
 
         //cv::destroyAllWindows();
     }

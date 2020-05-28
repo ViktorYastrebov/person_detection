@@ -1,11 +1,13 @@
 #pragma once
 
-extern "C" {
-#include <libavcodec/avcodec.h>
-}
-
 #include <opencv2/core.hpp>
 
+enum AVCodecID;
+struct AVPacket;
+struct AVCodec;
+struct AVCodecParserContext;
+struct AVCodecContext;
+struct AVFrame;
 
 namespace ganz_camera {
     namespace decoders {
@@ -22,7 +24,6 @@ namespace ganz_camera {
             AVCodecParserContext *parser_;
             AVCodecContext *codec_ctx_;
             AVFrame *frame_;
-            //AVFrame *BGR_frame_;
         };
     }
 }

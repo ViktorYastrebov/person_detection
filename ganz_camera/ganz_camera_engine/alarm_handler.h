@@ -2,7 +2,7 @@
 
 #include "connection.h"
 
-#include "camera_client/alarm_data.h"
+#include "alarm_data.h"
 
 namespace ganz_camera {
 
@@ -10,7 +10,7 @@ namespace ganz_camera {
         void alarm_handler(unsigned int handle, void** p_data, void* p_obj);
     }
 
-    class AlarmHandler {
+    class GANZ_CAMERA_ENGINE_DECL AlarmHandler {
     public:
         AlarmHandler(Connection &owner);
         ~AlarmHandler();

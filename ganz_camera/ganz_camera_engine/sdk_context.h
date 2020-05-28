@@ -1,13 +1,17 @@
 #pragma once
 
+
+#include "decl_spec.h"
+#include "connection.h"
 #include <memory>
-#include "camera_client/connection.h"
 #include <list>
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
 
 namespace ganz_camera {
 
-    // INFO: can be made as singleton
-    class SDKContext  final {
+    class GANZ_CAMERA_ENGINE_DECL SDKContext final {
     public:
         using ConnectionPtr = std::shared_ptr<Connection>;
         SDKContext();
@@ -17,3 +21,5 @@ namespace ganz_camera {
         std::list< ConnectionPtr > connections_;
     };
 }
+
+#pragma warning(pop)

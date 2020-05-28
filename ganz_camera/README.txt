@@ -16,5 +16,12 @@ Build & Run:
 	
 	Example of running: "no-ssl" "IP" "user" "password"
 	
-	
-
+Libraries dependecies:
+	opencv_img_hash420d.dll
+	opencv_world420d.dll
+	sdk.dll
+	avcodec-58.dll
+	avutil-56.dll
+	swscale-5.dll
+	swresample-3.dll
+	tbb.dll

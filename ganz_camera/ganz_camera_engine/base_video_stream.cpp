@@ -1,5 +1,5 @@
 #include "base_video_stream.h"
-#include "camera_client/stream_data_holder.h"
+#include "stream_data_holder.h"
 
 namespace ganz_camera {
 
