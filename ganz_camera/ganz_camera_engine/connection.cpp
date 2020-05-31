@@ -47,8 +47,7 @@ namespace ganz_camera {
         if (conn_handle_) {
             sdks_dev_conn_close(conn_handle_);
         }
-        //exception occurs, need to check for memory leaks here
-    }
+   }
 
     unsigned int Connection::getHandle() const {
         return conn_handle_;
