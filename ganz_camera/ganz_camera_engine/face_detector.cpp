@@ -1,14 +1,13 @@
-#include "face_handler.h"
+#include "face_detector.h"
 #include "sdks.h"
-
 #include "sdk_face.h"
 
-namespace ganz_camera {
+namespace sunell_camera {
 
     namespace callback_wrapper {
         void face_detection_handler(unsigned int handle, int stream_id, void** p_result, void* picture_data, void* p_obj) {
             if (p_result) {
-                ganz_camera::FaceHandler* owner = static_cast<ganz_camera::FaceHandler*>(p_obj);
+                sunell_camera::FaceDetector* owner = static_cast<sunell_camera::FaceDetector*>(p_obj);
                 const char *json_data_ptr = static_cast<char*>(*p_result);
                 FaceDataVector faces;
                 faces.fromJsonData(json_data_ptr);
@@ -17,29 +16,31 @@ namespace ganz_camera {
         }
     }
 
-     FaceHandler::FaceHandler(Connection &owner, const int channel, STREAM_TYPE type, PICTURE_SIZE size)
-         : owner_(owner)
+     FaceDetector::FaceDetector(unsigned int connection, const int channel, STREAM_TYPE type, PICTURE_SIZE size)
+         : connection_(connection)
          , channel_(channel)
          , stream_type_(type)
      {
-          stream_id_ = sdks_dev_face_detect_start(owner_.getHandle(), channel_, stream_type_, size, callback_wrapper::face_detection_handler, this);
+          stream_id_ = sdks_dev_face_detect_start(connection_, channel_, stream_type_, size, callback_wrapper::face_detection_handler, this);
           if (stream_id_ <= 0) {
               throw std::exception("sdks_dev_face_detect_start has failed");
           }
      }
 
-     FaceHandler::~FaceHandler()
+     FaceDetector::~FaceDetector()
      {
          if (stream_id_ > 0) {
-            sdks_dev_face_detect_stop(owner_.getHandle(), stream_id_);
-        }
+            sdks_dev_face_detect_stop(connection_, stream_id_);
+         }
+         sdks_dev_conn_close(connection_);
+         connection_ = 0;
      }
 
-     int FaceHandler::getStreamId() const {
+     int FaceDetector::getStreamId() const {
          return stream_id_;
      }
 
-     FaceDataVector FaceHandler::getLastResults() {
+     FaceDataVector FaceDetector::getLastResults() {
          FaceDataVector ret;
          {
              std::lock_guard<std::mutex> lock(data_mutex_);
@@ -51,7 +52,7 @@ namespace ganz_camera {
          return ret;
      }
 
-     void FaceHandler::handle(FaceDataVector &&faces) {
+     void FaceDetector::handle(FaceDataVector &&faces) {
          std::lock_guard<std::mutex> lock(data_mutex_);
          data_.push(std::move(faces));
      }

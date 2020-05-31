@@ -6,7 +6,7 @@
 #pragma warning(push)
 #pragma warning(disable: 4251)
 
-namespace ganz_camera {
+namespace sunell_camera {
 
     struct GANZ_CAMERA_ENGINE_DECL FaceData {
         int x;

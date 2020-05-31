@@ -2,7 +2,7 @@
 
 #include "json/cJSON.h"
 
-namespace ganz_camera {
+namespace sunell_camera {
     //TODO: add all checks for entries
     //      will fail for invalid json
 
