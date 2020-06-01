@@ -37,8 +37,7 @@ namespace sunell_camera {
         int channel_;
         STREAM_TYPE stream_type_;
         int stream_id_;
-
-        mutable std::mutex data_mutex_;
+        std::mutex data_mutex_;
         std::queue<FaceDataVector> data_;
     };
 }

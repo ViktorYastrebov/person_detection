@@ -13,46 +13,53 @@ namespace sunell_camera {
         }
     }
 
-    SDKContext::SDKContext(const std::string &host, const std::string &user, const std::string &pwd, bool ssl)
-        : host_(host)
-        , user_(user)
-        , pwd_(pwd)
-        , port_(ssl ? 20001 : 30001)
-        , is_ssl_(ssl)
+    std::atomic<int> SDKContext::counter_ = 0;
+
+    SDKContext::SDKContext()
     {
-        int ret = sdks_dev_init(nullptr);
-        if (ret) {
-            throw std::exception("SDK initialization error occurs");
+        if (!counter_) {
+            int ret = sdks_dev_init(nullptr);
+            if (ret) {
+                throw std::exception("SDK initialization error occurs");
+            }
+            ++counter_;
         }
     }
 
     SDKContext::~SDKContext() {
-        sdks_dev_quit();
+        --counter_;
+        if (!counter_) {
+            sdks_dev_quit();
+        }
     }
 
-    std::shared_ptr<FaceDetector> SDKContext::createFaceDetector(const int channel, STREAM_TYPE type, PICTURE_SIZE size) {
-        unsigned int conn = 0;
-        if (is_ssl_) {
-            conn = sdks_dev_conn_ssl(host_.c_str(),
-                port_,
-                user_.c_str(),
-                pwd_.c_str(),
+    std::shared_ptr<FaceDetector> SDKContext::createFaceDetector(const std::string &host, const std::string &user, const std::string &pwd, bool ssl,
+                                                                 const int channel, STREAM_TYPE type, PICTURE_SIZE size)
+    {
+        unsigned int connection = 0;
+        unsigned short port = ssl ? 20001 : 30001;
+        if (ssl) {
+            connection = sdks_dev_conn_ssl(host.c_str(),
+                port,
+                user.c_str(),
+                pwd.c_str(),
                 callback_wrapper::disconnect_handler,
                 this);
         } else {
-            conn = sdks_dev_conn(host_.c_str(),
-                port_,
-                user_.c_str(),
-                pwd_.c_str(),
+            connection = sdks_dev_conn(host.c_str(),
+                port,
+                user.c_str(),
+                pwd.c_str(),
                 callback_wrapper::disconnect_handler,
                 this);
         }
 
-        if (!conn) {
-            std::string error = "Can't connect to server : " + host_ + ":" + std::to_string(port_);
+        if (!connection) {
+            std::string error = "Can't connect to server : " + host + ":" + std::to_string(port);
             throw std::exception(error.c_str());
         }
-        return std::shared_ptr<FaceDetector>(new FaceDetector(conn, channel, type, size));
+
+        return std::shared_ptr<FaceDetector>(new FaceDetector(connection, channel, type, size));
     }
 
 }

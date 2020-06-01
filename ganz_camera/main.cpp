@@ -2,7 +2,7 @@
 #include <string>
 
 #include "sdk_context.h"
-#include "face_handler.h"
+#include "face_detector.h"
 
 int main(int argc, char *argv[])
 {
@@ -24,11 +24,10 @@ int main(int argc, char *argv[])
         pwd = std::string(argv[4]);
     }
 
-    ganz_camera::SDKContext context;
+    sunell_camera::SDKContext context;
     {
         constexpr int channel = 1;
-        ganz_camera::SDKContext::ConnectionPtr face_conn = context.buildConnection(host, user, pwd, is_ssl);
-        ganz_camera::FaceHandler faceHandler(*face_conn, channel, ganz_camera::STREAM_TYPE::HD, ganz_camera::FaceHandler::BIG);
+        auto face_detector = context.createFaceDetector(host, user, pwd, is_ssl, 1, sunell_camera::STREAM_TYPE::SD, sunell_camera::PICTURE_SIZE::SMALL);
 
         std::cout << "Please type something" << std::endl;
         std::string input;

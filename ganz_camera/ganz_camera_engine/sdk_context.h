@@ -3,6 +3,7 @@
 #include "decl_spec.h"
 #include <memory>
 #include <list>
+#include <atomic>
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
@@ -29,18 +30,12 @@ namespace sunell_camera {
 
     class GANZ_CAMERA_ENGINE_DECL SDKContext final {
     public:
-        SDKContext(const std::string &host, const std::string &user, const std::string &pwd, bool ssl = false);
+        SDKContext();
         ~SDKContext();
-        std::shared_ptr<FaceDetector> createFaceDetector(const int channel, STREAM_TYPE type, PICTURE_SIZE size);
-
+        std::shared_ptr<FaceDetector> createFaceDetector(const std::string &host, const std::string &user, const std::string &pwd, bool ssl, const int channel, STREAM_TYPE type, PICTURE_SIZE size);
     private:
         friend void callback_wrapper::disconnect_handler(unsigned int handle, void* p_obj);
-
-        std::string host_;
-        std::string user_;
-        std::string pwd_;
-        unsigned short port_;
-        bool is_ssl_;
+        static std::atomic<int> counter_;
     };
 }
 

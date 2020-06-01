@@ -1,6 +1,7 @@
 #include "face_detector.h"
 #include "sdks.h"
 #include "sdk_face.h"
+#include <string>
 
 namespace sunell_camera {
 
@@ -32,8 +33,9 @@ namespace sunell_camera {
          if (stream_id_ > 0) {
             sdks_dev_face_detect_stop(connection_, stream_id_);
          }
-         sdks_dev_conn_close(connection_);
-         connection_ = 0;
+         if (connection_) {
+             sdks_dev_conn_close(connection_);
+         }
      }
 
      int FaceDetector::getStreamId() const {
