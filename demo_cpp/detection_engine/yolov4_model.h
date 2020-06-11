@@ -1,24 +1,22 @@
 #pragma once
 
 #include <opencv2/dnn/dnn.hpp>
-
-#include <vector>
-
 #include "base_model.h"
+
 #include "decl_spec.h"
 #include "device_utils.h"
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
 
-class ENGINE_DECL YoloV3: public BaseModel {
+//DOES NOT WORK DUE TO ACTIVATION LAYER, it's not linear
+class ENGINE_DECL YoloV4 : public BaseModel {
 public:
-    YoloV3(const std::string &model, const std::string &config, RUN_ON device = RUN_ON::CPU);
-    ~YoloV3() = default;
+    YoloV4(const std::string &model, const std::string &config, RUN_ON device = RUN_ON::CPU);
+    ~YoloV4() = default;
     std::vector<cv::Rect> process(const cv::Mat &frame);
 private:
-    //INFO: use default image size (320, 320), possible values are: 416, 320, depends on cfg file
-    const int INPUT_SIZE = 320;
+    const int INPUT_SIZE = 512;
     cv::dnn::Net net_;
     std::vector<cv::String> output_layers_;
 };

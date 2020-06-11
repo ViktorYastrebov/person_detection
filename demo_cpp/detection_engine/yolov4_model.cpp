@@ -1,29 +1,26 @@
-#include "yolov3_model.h"
+#include "yolov4_model.h"
 
-#include <opencv2/core/ocl.hpp>
-
-YoloV3::YoloV3(const std::string &path, const std::string &config, RUN_ON device)
+YoloV4::YoloV4(const std::string &path, const std::string &config, RUN_ON device)
 {
     net_ = cv::dnn::readNet(path, config);
     //INFO: can map into different structure like GPU -> autodetection CUDA or OpenCL GPU device
     if (device == RUN_ON::GPU) {
         net_.setPreferableBackend(cv::dnn::Backend::DNN_BACKEND_CUDA);
         net_.setPreferableTarget(cv::dnn::Target::DNN_TARGET_CUDA);
-    }
-    /*else if (device == RUN_ON::OPENCL) {
+    } else if (device == RUN_ON::OPENCL) {
         net_.setPreferableBackend(cv::dnn::Backend::DNN_BACKEND_OPENCV);
         putenv("OPENCV_OPENCL_DEVICE=:GPU:0");
         net_.setPreferableTarget(cv::dnn::Target::DNN_TARGET_OPENCL);
-    }*/
+    }
     output_layers_ = net_.getUnconnectedOutLayersNames();
 }
 
-std::vector<cv::Rect> YoloV3::process(const cv::Mat &frame) {
+std::vector<cv::Rect> YoloV4::process(const cv::Mat &frame) {
     constexpr const double NORM_FACTOR = 1.0 / 255.0;
     constexpr const int PERSON_CLASS_ID = 0;
     constexpr const double PROBABILITY_THRESHOLD = 0.3;
 
-    net_.setInput(cv::dnn::blobFromImage(frame, NORM_FACTOR, cv::Size(INPUT_SIZE, INPUT_SIZE), cv::Scalar(0,0,0), true, false));
+    net_.setInput(cv::dnn::blobFromImage(frame, NORM_FACTOR, cv::Size(INPUT_SIZE, INPUT_SIZE), cv::Scalar(0, 0, 0), true, false));
 
     std::vector<std::vector<cv::Mat> > ret;
     net_.forward(ret, output_layers_);
@@ -40,7 +37,7 @@ std::vector<cv::Rect> YoloV3::process(const cv::Mat &frame) {
                 const float * row = l2.ptr<float>(i);
                 auto value = std::max_element(&row[5], &row[l2.cols]);
                 std::size_t class_id = std::distance(&row[5], value);
-                if (class_id == PERSON_CLASS_ID  && *value > PROBABILITY_THRESHOLD) {
+                if (class_id == PERSON_CLASS_ID && *value > PROBABILITY_THRESHOLD) {
                     int center_x = static_cast<int>(row[0] * width);
                     int center_y = static_cast<int>(row[1] * height);
                     int w = static_cast<int>(row[2] * width);

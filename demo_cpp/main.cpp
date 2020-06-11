@@ -7,11 +7,29 @@
 
 #include <opencv2/imgproc.hpp>
 #include "detection_engine/yolov3_model.h"
+#include "detection_engine/yolov4_model.h"
+#include "detection_engine/deep_sort/model.h"
 
-#include <opencv2/core/ocl.hpp>
+std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &base_dir, RUN_ON on) {
+    // YoloV3, YoloV4
+    if (name == "YoloV3") {
+        std::string w = base_dir + "yolo_v3/yolov3.weights";
+        std::string c = base_dir + "yolo_v3/yolov3.cfg";
+        return std::make_unique<YoloV3>(w, c, on);
+    } else if (name == "YoloV4") {
+        std::string w = base_dir + "yolo_v4/yolov4.weights";
+        std::string c = base_dir + "yolo_v4/yolov4.cfg";
+        return std::make_unique<YoloV4>(w, c, on);
+    }
+    return nullptr;
+}
 
-void process_video_stream(const std::string &file, const std::string &weights, const std::string &model_config) {
-    auto model = std::make_unique<YoloV3>(weights, model_config, RUN_ON::OPENCL);
+
+void process_video_stream(const std::string &file, const std::string &name) {
+    const std::string BASE_DIR = "d:/viktor_project/person_detection/demo_cpp/models/";
+    auto model = builder(name, BASE_DIR, RUN_ON::GPU);
+    auto encoder_model = deep_sort::ImageEncoderModel(BASE_DIR, RUN_ON::GPU);
+
     if (model) {
         cv::Mat frame;
         cv::VideoCapture stream(file);
@@ -19,7 +37,15 @@ void process_video_stream(const std::string &file, const std::string &weights, c
         cv::namedWindow("result", cv::WINDOW_AUTOSIZE);
         {
             while (stream.read(frame)) {
+                auto start = std::chrono::system_clock::now();
                 auto bboxes = model->process(frame);
+                auto end = std::chrono::system_clock::now();
+                auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                std::cout << int_ms.count() << " ms" << std::endl;
+
+                encoder_model.encode(frame, bboxes);
+
+
                 std::cout << "Persons on the frame : " << bboxes.size() << std::endl;
                 for (const auto &bbox : bboxes) {
                     cv::rectangle(frame, bbox, cv::Scalar(255, 0, 0), 2);
@@ -35,57 +61,14 @@ void process_video_stream(const std::string &file, const std::string &weights, c
     }
 }
 
-void test_opencl_devices() {
-    if (!cv::ocl::haveOpenCL())
-    {
-        std::cout << "OpenCL is not available..." << std::endl;
-        return;
-    }
-    cv::ocl::setUseOpenCL(true);
-    std::vector< cv::ocl::PlatformInfo > platform_info;
-    cv::ocl::getPlatfomsInfo(platform_info);
-
-    for (int i = 0; i < platform_info.size(); i++) {
-        cv::ocl::PlatformInfo sdk = platform_info.at(i);
-        for (int j = 0; j < sdk.deviceNumber(); j++) {
-            cv::ocl::Device device;
-            sdk.getDevice(device, j);
-
-            std::cout << "\n\n*********************\n Device " << i + 1 << std::endl;
-            std::cout << "Vendor ID: " << device.vendorID() << std::endl;
-            std::cout << "Vendor name: " << device.vendorName() << std::endl;
-            std::cout << "Name: " << device.name() << std::endl;
-            std::cout << "Driver version: " << device.driverVersion() << std::endl;
-            std::cout << "available: " << device.available() << std::endl;
-        }
-    }
-
-    cv::ocl::Context context;
-    if (!context.create(cv::ocl::Device::TYPE_GPU))
-    {
-        std::cout << "Failed creating the context..." << std::endl;
-        return;
-    }
-
-    std::cout << std::endl;
-    std::cout << context.ndevices() << " GPU devices are detected." << std::endl;
-    for (int i = 0; i < context.ndevices(); i++)
-    {
-        cv::ocl::Device device = context.device(i);
-        std::cout << "name:              " << device.name() << std::endl;
-        std::cout << "available:         " << device.available() << std::endl;
-        std::cout << "imageSupport:      " << device.imageSupport() << std::endl;
-        std::cout << "OpenCL_C_Version:  " << device.OpenCL_C_Version() << std::endl;
-        std::cout << std::endl;
-    }
-}
-
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
+    p.add("-n", "--name", "Model name: [YoloV3, YoloV4]");
     p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
-    p.add("-m", "--model", "Path to model weights", ap::mode::REQUIRED);
+
+    /*p.add("-m", "--model", "Path to model weights", ap::mode::REQUIRED);
     p.add("-c", "--config", "Path to model config");
-    p.add("-i", "--info", "List all OpenCL devices");
+    p.add("-i", "--info", "List all OpenCL devices");*/
 
     auto args = p.parse();
     if (!args.parsed_successfully()) {
@@ -93,12 +76,12 @@ int main(int argc, char *argv[]) {
     }
 
     //INFO: just prints all the device list
-    if (!args["-i"].empty()) {
+    /*if (!args["-i"].empty()) {
         test_opencl_devices();
-    }
+    }*/
 
     auto file = args["-f"];
-    process_video_stream(file, args["-m"], args["-c"]);
+    process_video_stream(file, args["-n"]);
 
     return 0;
 }
