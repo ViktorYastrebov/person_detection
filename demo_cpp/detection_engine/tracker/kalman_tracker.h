@@ -16,7 +16,7 @@ namespace tracker {
         static const int STATE_SIZE = 7;
         static const int MEASUREMENT_SIZE = 4;
 
-        KalmanTracker(const int id, const cv::Rect &bbox);
+        KalmanTracker(const cv::Rect &bbox);
         ~KalmanTracker() = default;
 
         void update(const cv::Rect &bbox);
@@ -28,7 +28,7 @@ namespace tracker {
         int getHitSteak() const;
 
     private:
-
+        static int ID_COUNTER;
     private:
         cv::KalmanFilter filter_;
         cv::Mat mesurements_;

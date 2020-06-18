@@ -12,30 +12,39 @@
 #include "detection_engine/tracker/trackers_pool.h"
 
 
-std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &base_dir, RUN_ON on) {
+std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &base_dir, const std::string &confidence, RUN_ON on) {
     // YoloV3, YoloV4
+    float conf = 0.3f;
+    try {
+         conf = std::stof(confidence);
+    }
+    catch (const std::exception&)
+    {}
+
+    std::cout << "conf : " << conf << std::endl;
+
     if (name == "YoloV3") {
         std::string w = base_dir + "yolo_v3/yolov3.weights";
         std::string c = base_dir + "yolo_v3/yolov3.cfg";
-        return std::make_unique<YoloV3>(w, c, on);
+        return std::make_unique<YoloV3>(w, c, conf, on);
     } else if (name == "YoloV4") {
         std::string w = base_dir + "yolo_v4/yolov4.weights";
         std::string c = base_dir + "yolo_v4/yolov4.cfg";
-        return std::make_unique<YoloV4>(w, c, on);
+        return std::make_unique<YoloV4>(w, c, conf, on);
     }
     return nullptr;
 }
 
 
-void process_video_stream(const std::string &file, const std::string &name) {
+void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
     const std::string BASE_DIR = "d:/viktor_project/person_detection/demo_cpp/models/";
-    auto model = builder(name, BASE_DIR, RUN_ON::GPU);
+    auto model = builder(name, BASE_DIR, confidence, RUN_ON::GPU);
 
     if (model) {
         cv::Mat frame;
         cv::VideoCapture stream(file);
 
-        tracker::TrackersPool tracks;
+        tracker::TrackersPool tracks(10);
 
         cv::namedWindow("result", cv::WINDOW_AUTOSIZE);
         {
@@ -73,14 +82,15 @@ void process_video_stream(const std::string &file, const std::string &name) {
 }
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
-    p.add("-n", "--name", "Model name: [YoloV3, YoloV4]");
+    p.add("-n", "--name", "Model name: [YoloV3, YoloV4]", ap::mode::REQUIRED);
     p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
+    p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
 
     auto args = p.parse();
     if (!args.parsed_successfully()) {
         return 0;
     }
-    process_video_stream(args["-f"], args["-n"]);
+    process_video_stream(args["-f"], args["-n"], args["-c"]);
 
     return 0;
 }

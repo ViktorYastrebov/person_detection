@@ -16,17 +16,22 @@ namespace tracker {
         }
     }
 
+    TrackersPool::TrackersPool(int max_age, int min_hits)
+        :initialized_(false)
+        , max_age_(max_age)
+        , min_hits_(min_hits)
+    {}
+
     std::vector<TrackResult> TrackersPool::update(const std::vector<cv::Rect> &detections) {
         ++frame_counter_;
 
-        if (!initialized) {
+        if (!initialized_) {
             std::vector<TrackResult> out;
             for (const auto &box : detections) {
-                trackers_.push_back(KalmanTracker(counter_, box));
-                out.push_back({ box, counter_ });
-                ++counter_;
+                trackers_.push_back(KalmanTracker(box));
+                out.push_back({ box, trackers_.back().getID() });
             }
-            initialized = true;
+            initialized_ = true;
             return out;
         }
 
@@ -116,7 +121,7 @@ namespace tracker {
         for (auto umd : unmatchedDetections) {
             //KalmanTracker tracker = KalmanTracker(detections[umd]);
             //trackers.push_back(tracker);
-            trackers_.push_back(KalmanTracker(counter_, detections[umd]));
+            trackers_.push_back(KalmanTracker(detections[umd]));
         }
 
         std::vector< TrackResult > results;

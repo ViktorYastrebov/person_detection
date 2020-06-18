@@ -16,16 +16,15 @@ namespace tracker {
 
     class TRACKER_ENGINE TrackersPool {
     public:
-        TrackersPool() = default;
+        TrackersPool(int max_age = 1, int min_hits = 3);
         ~TrackersPool() = default;
 
         std::vector<TrackResult> update(const std::vector<cv::Rect> &detections);
 
     private:
-        int counter_ = 0;
-        bool initialized = false;
-        int max_age_ = 1;
-        int min_hits_ = 3;
+        bool initialized_;
+        int max_age_;
+        int min_hits_;
         double iou_threshold_ = 0.3;
         std::vector<KalmanTracker> trackers_;
 

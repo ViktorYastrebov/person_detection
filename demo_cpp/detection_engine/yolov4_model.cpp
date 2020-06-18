@@ -1,6 +1,7 @@
 #include "yolov4_model.h"
 
-YoloV4::YoloV4(const std::string &path, const std::string &config, RUN_ON device)
+YoloV4::YoloV4(const std::string &path, const std::string &config, const float confidence, RUN_ON device)
+    :conf_threshold_(confidence)
 {
     net_ = cv::dnn::readNet(path, config);
     //INFO: can map into different structure like GPU -> autodetection CUDA or OpenCL GPU device
@@ -18,7 +19,7 @@ YoloV4::YoloV4(const std::string &path, const std::string &config, RUN_ON device
 std::vector<cv::Rect> YoloV4::process(const cv::Mat &frame) {
     constexpr const double NORM_FACTOR = 1.0 / 255.0;
     constexpr const int PERSON_CLASS_ID = 0;
-    constexpr const double PROBABILITY_THRESHOLD = 0.3;
+    //constexpr const double PROBABILITY_THRESHOLD = 0.3;
 
     net_.setInput(cv::dnn::blobFromImage(frame, NORM_FACTOR, cv::Size(INPUT_SIZE, INPUT_SIZE), cv::Scalar(0, 0, 0), true, false));
 
@@ -37,7 +38,7 @@ std::vector<cv::Rect> YoloV4::process(const cv::Mat &frame) {
                 const float * row = l2.ptr<float>(i);
                 auto value = std::max_element(&row[5], &row[l2.cols]);
                 std::size_t class_id = std::distance(&row[5], value);
-                if (class_id == PERSON_CLASS_ID && *value > PROBABILITY_THRESHOLD) {
+                if (class_id == PERSON_CLASS_ID && *value > conf_threshold_) {
                     int center_x = static_cast<int>(row[0] * width);
                     int center_y = static_cast<int>(row[1] * height);
                     int w = static_cast<int>(row[2] * width);

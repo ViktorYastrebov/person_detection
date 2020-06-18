@@ -12,13 +12,14 @@
 //DOES NOT WORK DUE TO ACTIVATION LAYER, it's not linear
 class ENGINE_DECL YoloV4 : public BaseModel {
 public:
-    YoloV4(const std::string &model, const std::string &config, RUN_ON device = RUN_ON::CPU);
+    YoloV4(const std::string &model, const std::string &config, const float confidence = 0.3, RUN_ON device = RUN_ON::CPU);
     ~YoloV4() = default;
     std::vector<cv::Rect> process(const cv::Mat &frame);
 private:
     const int INPUT_SIZE = 512;
     cv::dnn::Net net_;
     std::vector<cv::String> output_layers_;
+    const float conf_threshold_;
 };
 
 #pragma warning(pop)

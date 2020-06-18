@@ -28,10 +28,11 @@ namespace tracker {
         return cv::Rect(static_cast<int>(x), static_cast<int>(y), static_cast<int>(w), static_cast<int>(h));
     }
 
+    int KalmanTracker::ID_COUNTER = 0;
 
-    KalmanTracker::KalmanTracker(const int id, const cv::Rect &bbox)
+    KalmanTracker::KalmanTracker(const cv::Rect &bbox)
         :filter_(STATE_SIZE, MEASUREMENT_SIZE)
-        , id_(id)
+        , id_(ID_COUNTER++)
         , time_since_update_(0)
         , hits_(0)
         , hit_streak_(0)
