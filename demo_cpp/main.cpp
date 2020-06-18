@@ -10,6 +10,7 @@
 #include "detection_engine/yolov4_model.h"
 
 #include "detection_engine/tracker/trackers_pool.h"
+#include <filesystem>
 
 
 std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &base_dir, const std::string &confidence, RUN_ON on) {
@@ -24,12 +25,12 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &b
     std::cout << "conf : " << conf << std::endl;
 
     if (name == "YoloV3") {
-        std::string w = base_dir + "yolo_v3/yolov3.weights";
-        std::string c = base_dir + "yolo_v3/yolov3.cfg";
+        std::string w = base_dir + "/yolo_v3/yolov3.weights";
+        std::string c = base_dir + "/yolo_v3/yolov3.cfg";
         return std::make_unique<YoloV3>(w, c, conf, on);
     } else if (name == "YoloV4") {
-        std::string w = base_dir + "yolo_v4/yolov4.weights";
-        std::string c = base_dir + "yolo_v4/yolov4.cfg";
+        std::string w = base_dir + "/yolo_v4/yolov4.weights";
+        std::string c = base_dir + "/yolo_v4/yolov4.cfg";
         return std::make_unique<YoloV4>(w, c, conf, on);
     }
     return nullptr;
@@ -37,8 +38,8 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &b
 
 
 void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
-    const std::string BASE_DIR = "d:/viktor_project/person_detection/demo_cpp/models/";
-    auto model = builder(name, BASE_DIR, confidence, RUN_ON::GPU);
+    auto BASE_DIR = std::filesystem::current_path() / "models";
+    auto model = builder(name, BASE_DIR.string(), confidence, RUN_ON::GPU);
 
     if (model) {
         cv::Mat frame;
