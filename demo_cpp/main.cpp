@@ -8,7 +8,9 @@
 #include <opencv2/imgproc.hpp>
 #include "detection_engine/yolov3_model.h"
 #include "detection_engine/yolov4_model.h"
-#include "detection_engine/deep_sort/model.h"
+
+#include "detection_engine/tracker/trackers_pool.h"
+
 
 std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &base_dir, RUN_ON on) {
     // YoloV3, YoloV4
@@ -28,11 +30,12 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &b
 void process_video_stream(const std::string &file, const std::string &name) {
     const std::string BASE_DIR = "d:/viktor_project/person_detection/demo_cpp/models/";
     auto model = builder(name, BASE_DIR, RUN_ON::GPU);
-    auto encoder_model = deep_sort::ImageEncoderModel(BASE_DIR, RUN_ON::GPU);
 
     if (model) {
         cv::Mat frame;
         cv::VideoCapture stream(file);
+
+        tracker::TrackersPool tracks;
 
         cv::namedWindow("result", cv::WINDOW_AUTOSIZE);
         {
@@ -41,15 +44,23 @@ void process_video_stream(const std::string &file, const std::string &name) {
                 auto bboxes = model->process(frame);
                 auto end = std::chrono::system_clock::now();
                 auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                std::cout << int_ms.count() << " ms" << std::endl;
+                std::cout << "Detection time: " << int_ms.count() << " ms" << std::endl;
 
-                encoder_model.encode(frame, bboxes);
-
-
-                std::cout << "Persons on the frame : " << bboxes.size() << std::endl;
+                // std::cout << "Persons on the frame : " << bboxes.size() << std::endl;
                 for (const auto &bbox : bboxes) {
                     cv::rectangle(frame, bbox, cv::Scalar(255, 0, 0), 2);
                 }
+                auto tracks_bboxes = tracks.update(bboxes);
+                for (const auto &result : tracks_bboxes) {
+                    cv::rectangle(frame, result.bbox, cv::Scalar(0, 0, 255), 2);
+                    std::string id = std::to_string(result.id);
+                    cv::Point p(result.bbox.x, result.bbox.y);
+                    cv::putText(frame, id, p, 0, 5e-3 * 200, (0, 255, 0), 2);
+                }
+                auto total_end = std::chrono::system_clock::now();
+                auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_end - start);
+                std::cout << "Total time: " << total_ms.count() << " ms" << std::endl;
+
                 cv::imshow("result", frame);
                 int key = cv::waitKey(1);
                 if (key == 27) {
@@ -60,28 +71,16 @@ void process_video_stream(const std::string &file, const std::string &name) {
         cv::destroyAllWindows();
     }
 }
-
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
     p.add("-n", "--name", "Model name: [YoloV3, YoloV4]");
     p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
 
-    /*p.add("-m", "--model", "Path to model weights", ap::mode::REQUIRED);
-    p.add("-c", "--config", "Path to model config");
-    p.add("-i", "--info", "List all OpenCL devices");*/
-
     auto args = p.parse();
     if (!args.parsed_successfully()) {
         return 0;
     }
-
-    //INFO: just prints all the device list
-    /*if (!args["-i"].empty()) {
-        test_opencl_devices();
-    }*/
-
-    auto file = args["-f"];
-    process_video_stream(file, args["-n"]);
+    process_video_stream(args["-f"], args["-n"]);
 
     return 0;
 }

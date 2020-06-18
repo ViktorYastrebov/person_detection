@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(detection_engine)
 
+
+add_subdirectory(tracker)
+ 
+
 find_package(OpenCV REQUIRED PATHS ${INSTALLED_OPENCV_PATH} NO_DEFAULT_PATH)
 
 include_directories(${OpenCV_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
@@ -20,4 +24,4 @@ set(SOURCE_FILES
 add_library(detection_engine SHARED ${SOURCE_FILES})
 
 target_include_directories(detection_engine INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(detection_engine ${OpenCV_LIBS})
+target_link_libraries(detection_engine tracker ${OpenCV_LIBS})
