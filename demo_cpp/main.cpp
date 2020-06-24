@@ -54,16 +54,44 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &b
 void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
     auto BASE_DIR = std::filesystem::current_path() / "models";
 
+    //////////////////////////////////////
     //INFO: HERE YOU MAY ADD ANY UI USER INTERACTION FOR CLASS SELECTING 
     //      For now it's just the demo which shows the possibilities
-
-    auto path = BASE_DIR / "yolo_v3" / "coco.names";
+    //////////////////////////////////////
+    auto path = BASE_DIR / "coco.names";
     auto class_map = readClasses(path);
     std::map<int, std::string> id_classes;
     for (const auto &elem : class_map) {
         id_classes[elem.second] = elem.first;
     }
-    std::vector<int> classes{ class_map["person"] };
+
+    std::map<int, std::string>::const_iterator it = id_classes.cbegin();
+    for (it; it != id_classes.cend();) {
+        std::cout << std::setw(30) << it->second << " = " << it->first;
+        ++it;
+        if (it != id_classes.cend()) {
+            std::cout << std::setw(30) << it->second << " = " << it->first << std::endl;
+            ++it;
+        }
+    }
+    std::cout << "Enter class IDs like 1,2,3,4,5 etc" << std::endl;
+    std::string class_ids;
+    std::getline(std::cin, class_ids);
+
+    std::vector<int> classes;
+    std::stringstream ss(class_ids);
+    while (ss.good()) {
+        std::string idStr;
+        try {
+            std::getline(ss, idStr, ',');
+            int id = std::stoi(idStr);
+            classes.push_back(id);
+        } catch (const std::exception &) {
+            std::cout << "Invalid Id has occured" << std::endl;
+            return;
+        }
+    }
+    //////////////////////////////////////
 
     auto model = builder(name, BASE_DIR.string(), confidence, classes, RUN_ON::GPU);
 
