@@ -22,14 +22,14 @@ namespace tracker {
         , min_hits_(min_hits)
     {}
 
-    std::vector<TrackResult> TrackersPool::update(const std::vector<cv::Rect> &detections) {
+    std::vector<TrackResult> TrackersPool::update(const std::vector<DetectionResult> &detections) {
         ++frame_counter_;
 
         if (!initialized_) {
             std::vector<TrackResult> out;
-            for (const auto &box : detections) {
-                trackers_.push_back(KalmanTracker(box));
-                out.push_back({ box, trackers_.back().getID() });
+            for (const auto &detection : detections) {
+                trackers_.push_back(KalmanTracker(detection.bbox, detection.class_id));
+                out.push_back({ detection.bbox, trackers_.back().getID(), detection.class_id });
             }
             initialized_ = true;
             return out;
@@ -57,7 +57,7 @@ namespace tracker {
             for (unsigned int j = 0; j < n_detected; j++)
             {
                 // use 1-iou because the hungarian algorithm computes a minimum-cost assignment.
-                iouMatrix[i][j] = 1.0 - helpers::GetIOU(predicted_boxes[i], detections[j]);
+                iouMatrix[i][j] = 1.0 - helpers::GetIOU(predicted_boxes[i], detections[j].bbox);
             }
         }
 
@@ -114,20 +114,20 @@ namespace tracker {
         for (unsigned int i = 0; i < matchedPairs.size(); ++i) {
             trkIdx = matchedPairs[i].x;
             detIdx = matchedPairs[i].y;
-            trackers_[trkIdx].update(detections[detIdx]);
+            trackers_[trkIdx].update(detections[detIdx].bbox);
         }
 
         // create and initialise new trackers for unmatched detections
         for (auto umd : unmatchedDetections) {
             //KalmanTracker tracker = KalmanTracker(detections[umd]);
             //trackers.push_back(tracker);
-            trackers_.push_back(KalmanTracker(detections[umd]));
+            trackers_.push_back(KalmanTracker(detections[umd].bbox, detections[umd].class_id));
         }
 
         std::vector< TrackResult > results;
         for (auto it = trackers_.begin(); it != trackers_.end();) {
             if (((*it).getTimeSinceUpdate() < 1) && (it->getHitSteak() >= min_hits_ || frame_counter_ <= min_hits_)) {
-                results.push_back({ it->getState(), it->getID() });
+                results.push_back({ it->getState(), it->getID(), it->getClassID() });
                 ++it;
             } else {
                 ++it;

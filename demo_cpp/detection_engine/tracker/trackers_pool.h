@@ -3,6 +3,8 @@
 #include "kalman_tracker.h"
 #include <vector>
 
+#include "base_model.h"
+
 
 namespace tracker {
 
@@ -12,6 +14,7 @@ namespace tracker {
     struct TRACKER_ENGINE TrackResult {
         cv::Rect bbox;
         int id;
+        int class_id;
     };
 
     class TRACKER_ENGINE TrackersPool {
@@ -19,7 +22,7 @@ namespace tracker {
         TrackersPool(int max_age = 1, int min_hits = 3);
         ~TrackersPool() = default;
 
-        std::vector<TrackResult> update(const std::vector<cv::Rect> &detections);
+        std::vector<TrackResult> update(const std::vector<DetectionResult> &detections);
 
     private:
         bool initialized_;

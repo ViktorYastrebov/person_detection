@@ -28,8 +28,10 @@ set(SOURCE_FILES
 		"utils.h"
    )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+message(STATUS "TRACKER_ENGINE_INCLUDE = ${TRACKER_ENGINE_INCLUDE}")
+message(STATUS "DETECTION_ENGINE_INCLUDE = ${DETECTION_ENGINE_INCLUDE}")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${TRACKER_ENGINE_INCLUDE} ${DETECTION_ENGINE_INCLUDE})
 
 add_executable(demo_cpp ${SOURCE_FILES})
 
-target_link_libraries(demo_cpp  detection_engine)
+target_link_libraries(demo_cpp tracker_engine detection_engine)

@@ -30,8 +30,9 @@ namespace tracker {
 
     int KalmanTracker::ID_COUNTER = 0;
 
-    KalmanTracker::KalmanTracker(const cv::Rect &bbox)
+    KalmanTracker::KalmanTracker(const cv::Rect &bbox, const int class_id)
         :filter_(STATE_SIZE, MEASUREMENT_SIZE)
+        , class_id_(class_id)
         , id_(ID_COUNTER++)
         , time_since_update_(0)
         , hits_(0)
@@ -117,5 +118,9 @@ namespace tracker {
 
     int KalmanTracker::getHitSteak() const {
         return hit_streak_;
+    }
+
+    int KalmanTracker::getClassID() const {
+        return class_id_;
     }
 }
