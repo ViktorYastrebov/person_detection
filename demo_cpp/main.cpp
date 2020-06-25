@@ -143,6 +143,8 @@ int main(int argc, char *argv[]) {
 
     auto args = p.parse();
     if (!args.parsed_successfully()) {
+		std::cout << "Usage demo_cpp.exe -n[\"YoloV3\" | \"YoloV4\"] -f \"path_to_file\" -c x.x" << std::endl;
+		std::cout << std::setw(12) << " where -c is confidience threshold, range [0.0, 1.0]" << std::endl;
         return 0;
     }
     process_video_stream(args["-f"], args["-n"], args["-c"]);
