@@ -61,8 +61,11 @@ void process_video_stream(const std::string &file, const std::string &name, cons
     auto path = BASE_DIR / "coco.names";
     auto class_map = readClasses(path);
     std::map<int, std::string> id_classes;
+	std::map<int, cv::Scalar> classIdToColor;
+
     for (const auto &elem : class_map) {
         id_classes[elem.second] = elem.first;
+		classIdToColor[elem.second] = cv::Scalar(rand() % 255, rand() % 255, rand() % 255);
     }
 
     std::map<int, std::string>::const_iterator it = id_classes.cbegin();
@@ -91,6 +94,7 @@ void process_video_stream(const std::string &file, const std::string &name, cons
             return;
         }
     }
+
     //////////////////////////////////////
 
     auto model = builder(name, BASE_DIR.string(), confidence, classes, RUN_ON::GPU);
@@ -110,17 +114,42 @@ void process_video_stream(const std::string &file, const std::string &name, cons
                 auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
                 std::cout << "Detection time: " << int_ms.count() << " ms" << std::endl;
 
-                // std::cout << "Persons on the frame : " << bboxes.size() << std::endl;
-                for (const auto &bbox : output) {
-                    cv::rectangle(frame, bbox.bbox, cv::Scalar(255, 0, 0), 2);
-                }
+                //for (const auto &bbox : output) {
+                //    cv::rectangle(frame, bbox.bbox, cv::Scalar(255, 0, 0), 2);
+                //}
+
+				///// THIS IS ONLY THE VISUALIZATION METHOD
+				///// YOU CAN MAKE YOUR OWN !!!
+				auto overlay = frame.clone();
                 auto tracks_output = tracks.update(output);
                 for (const auto &result : tracks_output) {
-                    cv::rectangle(frame, result.bbox, cv::Scalar(0, 0, 255), 2);
-                    std::string id = std::to_string(result.id) + " " + id_classes[result.class_id];
-                    cv::Point p(result.bbox.x, result.bbox.y);
-                    cv::putText(frame, id, p, 0, 5e-3 * 200, (0, 255, 0), 2);
+					auto class_color = classIdToColor[result.class_id];
+                    cv::rectangle(frame, result.bbox, class_color, 1);
+                    std::string str = std::to_string(result.id) + " " + id_classes[result.class_id];
+
+					constexpr int TILE_HEIGHT = 10;
+					cv::Rect tileRect;
+					if ((result.bbox.y - TILE_HEIGHT) > 0) {
+						tileRect.x = result.bbox.x;
+						tileRect.y = result.bbox.y - TILE_HEIGHT;
+						tileRect.width = result.bbox.width;
+						tileRect.height = TILE_HEIGHT;
+					} else {
+						tileRect.y = result.bbox.y + result.bbox.height;
+						tileRect.x = result.bbox.x;
+						tileRect.width = result.bbox.width;
+						tileRect.height = TILE_HEIGHT;
+					}
+					//INFO: It's not the best way to draw the labels, under OpenCV interface
+					//      it's hard to fit the text to the box, so I leave the constants for now
+					cv::rectangle(overlay, tileRect, class_color, cv::FILLED);
+                    cv::Point p(tileRect.x, tileRect.y + 5);
+                    cv::putText(frame, str, p, 0, 0.3, (127, 127, 127), 2); //VERY COST OP
                 }
+				auto alpha = 0.4;
+				cv::addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame);
+
+				//////////////////////////////////
                 auto total_end = std::chrono::system_clock::now();
                 auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_end - start);
                 std::cout << "Total time: " << total_ms.count() << " ms" << std::endl;
