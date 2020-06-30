@@ -2,3 +2,6 @@
 
 BaseModel::~BaseModel()
 {}
+
+BaseModelBatched::~BaseModelBatched()
+{}
