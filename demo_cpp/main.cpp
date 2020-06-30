@@ -246,7 +246,15 @@ int main(int argc, char *argv[]) {
         std::cout << std::setw(12) << " where -c is confidience threshold, range [0.0, 1.0]" << std::endl;
         return 0;
     }
-    const std::vector<std::string> files = {
+
+    const std::vector<std::string> files4 = {
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4"
+    };
+
+    const std::vector<std::string> files8 = {
         "d:\\viktor_project\\test_data\\videos\\Running - 294.mp4",
         "d:\\viktor_project\\test_data\\videos\\Subway - 6398.mp4",
         "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
@@ -256,7 +264,27 @@ int main(int argc, char *argv[]) {
         "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
         "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
     };
-    process_many_streams(files, args["-n"], args["-c"]);
+
+    const std::vector<std::string> files16 = {
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
+        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4"
+    };
+
+    process_many_streams(files16, args["-n"], args["-c"]);
 
     //process_video_stream("d:\\viktor_project\\test_data\\videos\\Running - 294.mp4", args["-n"], args["-c"]);
 
