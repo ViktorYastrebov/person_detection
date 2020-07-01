@@ -18,6 +18,8 @@ set(SOURCE_FILES
 		"yolov4_model.h"
 		"yolov3_batch.h"
 		"yolov3_batch.cpp"
+		"yolov4_batch.h"
+		"yolov4_batch.cpp"
 		)
 
 add_library(detection_engine SHARED ${SOURCE_FILES})

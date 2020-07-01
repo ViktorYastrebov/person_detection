@@ -9,6 +9,7 @@
 #include "yolov3_model.h"
 #include "yolov4_model.h"
 #include "yolov3_batch.h"
+#include "yolov4_batch.h"
 
 #include "trackers_pool.h"
 #include "utils.h"
@@ -65,7 +66,11 @@ std::unique_ptr<BaseModelBatched> builderBatched(const std::string &name, const 
         std::string w = base_dir + "/yolov3_batch/yolov3.weights";
         std::string c = base_dir + "/yolov3_batch/yolov3.cfg";
         return std::make_unique<YoloV3Batched>(w, c, classes, conf, on);
-    }
+	} else if (name == "YoloV4") {
+		std::string w = base_dir + "/yolov4_batch/yolov4.weights";
+		std::string c = base_dir + "/yolov4_batch/yolov4.cfg";
+		return std::make_unique<YoloV4Batched>(w, c, classes, conf, on);
+	}
     return nullptr;
 }
 
@@ -237,7 +242,7 @@ void process_video_stream(const std::string &file, const std::string &name, cons
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
     p.add("-n", "--name", "Model name: [YoloV3, YoloV4]", ap::mode::REQUIRED);
-    //p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
+    ////p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
     p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
 
     auto args = p.parse();
@@ -248,10 +253,10 @@ int main(int argc, char *argv[]) {
     }
 
     const std::vector<std::string> files4 = {
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4"
+        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4",
+        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4",
+        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4",
+        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4"
     };
 
     const std::vector<std::string> files8 = {
@@ -284,7 +289,7 @@ int main(int argc, char *argv[]) {
         "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4"
     };
 
-    process_many_streams(files16, args["-n"], args["-c"]);
+    process_many_streams(files4, args["-n"], args["-c"]);
 
     //process_video_stream("d:\\viktor_project\\test_data\\videos\\Running - 294.mp4", args["-n"], args["-c"]);
 
