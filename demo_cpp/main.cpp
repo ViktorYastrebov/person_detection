@@ -121,33 +121,36 @@ void process_video_stream(const std::string &file, const std::string &name, cons
 				///// THIS IS ONLY THE VISUALIZATION METHOD
 				///// YOU CAN MAKE YOUR OWN !!!
 				auto overlay = frame.clone();
-                auto tracks_output = tracks.update(output);
-                for (const auto &result : tracks_output) {
-					auto class_color = classIdToColor[result.class_id];
-                    cv::rectangle(frame, result.bbox, class_color, 1);
-                    std::string str = std::to_string(result.id) + " " + id_classes[result.class_id];
+				if (output.size() > 0) {
+					auto tracks_output = tracks.update(output);
+					for (const auto &result : tracks_output) {
+						auto class_color = classIdToColor[result.class_id];
+						cv::rectangle(frame, result.bbox, class_color, 1);
+						std::string str = std::to_string(result.id) + " " + id_classes[result.class_id];
 
-					constexpr int TILE_HEIGHT = 10;
-					cv::Rect tileRect;
-					if ((result.bbox.y - TILE_HEIGHT) > 0) {
-						tileRect.x = result.bbox.x;
-						tileRect.y = result.bbox.y - TILE_HEIGHT;
-						tileRect.width = result.bbox.width;
-						tileRect.height = TILE_HEIGHT;
-					} else {
-						tileRect.y = result.bbox.y + result.bbox.height;
-						tileRect.x = result.bbox.x;
-						tileRect.width = result.bbox.width;
-						tileRect.height = TILE_HEIGHT;
+						constexpr int TILE_HEIGHT = 10;
+						cv::Rect tileRect;
+						if ((result.bbox.y - TILE_HEIGHT) > 0) {
+							tileRect.x = result.bbox.x;
+							tileRect.y = result.bbox.y - TILE_HEIGHT;
+							tileRect.width = result.bbox.width;
+							tileRect.height = TILE_HEIGHT;
+						}
+						else {
+							tileRect.y = result.bbox.y + result.bbox.height;
+							tileRect.x = result.bbox.x;
+							tileRect.width = result.bbox.width;
+							tileRect.height = TILE_HEIGHT;
+						}
+						//INFO: It's not the best way to draw the labels, under OpenCV interface
+						//      it's hard to fit the text to the box, so I leave the constants for now
+						cv::rectangle(overlay, tileRect, class_color, cv::FILLED);
+						cv::Point p(tileRect.x, tileRect.y + 5);
+						cv::putText(frame, str, p, 0, 0.3, (127, 127, 127), 2); //VERY COST OP
 					}
-					//INFO: It's not the best way to draw the labels, under OpenCV interface
-					//      it's hard to fit the text to the box, so I leave the constants for now
-					cv::rectangle(overlay, tileRect, class_color, cv::FILLED);
-                    cv::Point p(tileRect.x, tileRect.y + 5);
-                    cv::putText(frame, str, p, 0, 0.3, (127, 127, 127), 2); //VERY COST OP
-                }
-				auto alpha = 0.4;
-				cv::addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame);
+					auto alpha = 0.4;
+					cv::addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame);
+				}
 
 				//////////////////////////////////
                 auto total_end = std::chrono::system_clock::now();
