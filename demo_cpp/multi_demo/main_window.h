@@ -6,7 +6,7 @@
 
 #include <vector>
 #include "display_window.h"
-
+#include <thread>
 
 class MainWindow : public QMainWindow {
 //    Q_OBJECT
@@ -15,10 +15,10 @@ public:
     ~MainWindow();
 
     void Process(const std::string &name, const std::string &conf, const std::vector<std::string> &files);
-
-    CentralWidget &getCentralWidget();
-    const CentralWidget &getCentralWidget() const;
+protected:
+    void ProcessImpl(const std::string &name, const std::string &conf, const std::vector<std::string> &files);
 
 private:
     CentralWidget central_widget_;
+    std::thread runner_;
 };

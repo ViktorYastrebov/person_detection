@@ -16,6 +16,9 @@ else()
 	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_master/opencv_release")
 endif()
 
+
+
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
 add_subdirectory(detection_engine)
 add_subdirectory(single_demo)
