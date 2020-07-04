@@ -1,5 +1,6 @@
 #include <qapplication.h>
 #include <qcommandlineparser.h>
+#include <qscreen.h>
 #include "main_window.h"
 
 
@@ -34,6 +35,11 @@ int main(int argc, char*argv[]) {
         inputs.push_back(f.toStdString());
     }
     win.Process(model_name, model_conf, inputs);
+
+    QScreen *screen = app.primaryScreen();
+    QRect rect = screen->availableGeometry();
+    win.setGeometry(rect);
+
     win.show();
     return app.exec();
 }
