@@ -27,7 +27,6 @@ void DisplayFrame::stop() {
 }
 
 void DisplayFrame::paintEvent(QPaintEvent *p) {
-#if 1
     if (!stop_) {
         InputData data;
         if (queue_.try_pop(data)) {
@@ -42,23 +41,78 @@ void DisplayFrame::paintEvent(QPaintEvent *p) {
             }
             QSize s = size();
             QRect rect = QRect(0, 0, s.width(), s.height());
-            cv::Mat forImage(data.frame.cols, data.frame.rows, data.frame.type());
-            cv::cvtColor(data.frame, forImage, cv::COLOR_RGB2BGR);
-            //INFO: check memory managment because there is possible case when the Mat ref counter = 0 but QT still drawing for example
+
+            // Scale
+            auto img_size = data.frame.size();
+
+            float scaleWidth = static_cast<float>(rect.width()) / static_cast<float>(img_size.width);
+            float scaleHeight = static_cast<float>(rect.height()) / static_cast<float>(img_size.height);
+            float scale = std::min(scaleHeight, scaleWidth);
+
+            auto new_width = static_cast<int>(img_size.width * scale);
+            auto new_height = static_cast<int>(img_size.height *scale);
+
+            cv::Mat scaled;
+            cv::resize(data.frame, scaled, cv::Size(new_width, new_height));
+            // end scale
+
             last_ = data.frame;
-            QImage img = QImage((uchar*)last_.data, last_.cols, last_.rows, last_.step, QImage::Format_RGB888);
+
+            //TODO: make investigation, does it need here or not at all !!!
+            //cv::Mat forImage(scaled.cols, scaled.rows, scaled.type());
+            //cv::cvtColor(scaled, forImage, cv::COLOR_RGB2BGR);
+
+            //INFO: check memory managment because there is possible case when the Mat ref counter = 0 but QT still drawing for example
+            //last_ = data.frame;
+            QImage img = QImage((uchar*)scaled.data, scaled.cols, scaled.rows, scaled.step, QImage::Format_RGB888);
             QPainter painter(this);
+
+            // Center the image in the frame
+            auto w_diff = (rect.width() - new_width) / 2;
+            rect.setX(rect.x() + w_diff);
+            rect.setWidth(rect.width() - w_diff);
+
+            auto h_diff = (rect.height() - new_height) / 2;
+            rect.setY(rect.y() + h_diff);
+            rect.setHeight(rect.height() - h_diff);
+
             painter.drawImage(rect, img);
             QFrame::paintEvent(p);
+            //Might better to use rect only 
             QFrame::update();
         } else {
             if (!last_.empty()) {
                 QPainter painter(this);
-                QImage img = QImage((uchar*)last_.data, last_.cols, last_.rows, last_.step, QImage::Format_RGB888);
                 QSize s = size();
                 QRect rect = QRect(0, 0, s.width(), s.height());
+                // Scale
+                auto img_size = last_.size();
+
+                float scaleWidth = static_cast<float>(rect.width()) / static_cast<float>(img_size.width);
+                float scaleHeight = static_cast<float>(rect.height()) / static_cast<float>(img_size.height);
+                float scale = std::min(scaleHeight, scaleWidth);
+
+                auto new_width = static_cast<int>(img_size.width * scale);
+                auto new_height = static_cast<int>(img_size.height *scale);
+
+                cv::Mat scaled;
+                cv::resize(last_, scaled, cv::Size(new_width, new_height));
+                //cv::Mat forImage(scaled.cols, scaled.rows, scaled.type());
+                //cv::cvtColor(scaled, forImage, cv::COLOR_RGB2BGR);
+
+                QImage img = QImage((uchar*)scaled.data, scaled.cols, scaled.rows, scaled.step, QImage::Format_RGB888);
+
+                auto w_diff = (rect.width() - new_width) / 2;
+                rect.setX(rect.x() + w_diff);
+                rect.setWidth(rect.width() - w_diff);
+
+                auto h_diff = (rect.height() - new_height) / 2;
+                rect.setY(rect.y() + h_diff);
+                rect.setHeight(rect.height() - h_diff);
+
                 painter.drawImage(rect, img);
                 QFrame::paintEvent(p);
+                //Might better to use rect only 
                 QFrame::update();
             } else {
                 QSize s = size();
@@ -70,16 +124,13 @@ void DisplayFrame::paintEvent(QPaintEvent *p) {
             }
         }
     } else {
-#endif
         QSize s = size();
         QRect rect = QRect(0, 0, s.width(), s.height());
         QPainter painter(this);
         painter.fillRect(rect, QBrush(QColor(color_[0], color_[1], color_[2])));
         QFrame::paintEvent(p);
         QFrame::update();
-#if 1
     }
-#endif
 }
 
 

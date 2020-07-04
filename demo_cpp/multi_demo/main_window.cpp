@@ -41,11 +41,14 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
         while (processing) {
             std::vector<cv::Mat> frames;
             std::vector<int> out_idxs;
-            for(auto it = streamIds.begin(); it != streamIds.end(); ++it) {
+
+            auto it = streamIds.begin();
+            while(it != streamIds.end()) {
                 cv::Mat frame;
                 if (it->first->read(frame)) {
                     frames.push_back(frame);
                     out_idxs.push_back(it->second);
+                    ++it;
                 } else {
                     central_widget_.stopView(it->second);
                     it = streamIds.erase(it);
@@ -67,7 +70,7 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
             }
             auto end = std::chrono::system_clock::now();
             auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            std::string msg = "Processed: " + std::to_string(int_ms) + " msg";
+            std::string msg = "Processed: " + std::to_string(int_ms) + " ms";
             sendOutput(msg);
         }
     }
