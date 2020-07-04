@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
 project(multi_demo)
 
-set(CMAKE_PREFIX_PATH "d:/viktor_project/installs/qt-5/5.15.0/msvc2019_64")
+# set(CMAKE_PREFIX_PATH "d:/viktor_project/installs/qt-5/5.15.0/msvc2019_64")
+set(CMAKE_PREFIX_PATH "f:/developer02/workspace/deps/qt-5/5.15.0/msvc2019_64")
+# set(Qt5_DIR "d:/viktor_project/installs/qt-5/5.15.0/msvc2019_64")
+set(Qt5_DIR "f:/developer02/workspace/deps/qt-5/5.15.0/msvc2019_64")
 
-set(Qt5_DIR "d:/viktor_project/installs/qt-5/5.15.0/msvc2019_64")
+# set(_TBB_ROOT "d:/viktor_project/installs/tbb-2020.2-win")
+set(_TBB_ROOT "f:/developer02/workspace/deps/tbb-2020.2-win")
 
-
-set(_TBB_ROOT "d:/viktor_project/installs/tbb-2020.2-win")
 set(_TBB_INCLUDE_DIR ${_TBB_ROOT}/include)
 
 if(BUILD_ARCH EQUAL 64)
