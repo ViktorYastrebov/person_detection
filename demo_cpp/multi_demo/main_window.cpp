@@ -11,7 +11,12 @@ MainWindow::MainWindow()
 }
 
 MainWindow::~MainWindow()
-{}
+{
+    //INFO: might need force stop
+    if (runner_.joinable()) {
+        runner_.join();
+    }
+}
 
 void MainWindow::Process(const std::string &name, const std::string &conf, const std::vector<std::string> &files) {
     auto func = std::bind(&MainWindow::ProcessImpl, this, name, conf, files);
@@ -22,14 +27,13 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
     try {
         ModelBuilder builder(name, conf);
         auto model = builder.build(files, { 0 }, RUN_ON::GPU);
+        sendOutput("model loaded");
 
-        std::vector<cv::VideoCapture> streams;
-        std::unordered_map<cv::VideoCapture*, int> vid2ui;
+        std::map<std::shared_ptr<cv::VideoCapture>, int> streamIds;
         int idx = 0;
         for (const auto &file : files) {
-            auto stream = cv::VideoCapture(file);
-            streams.push_back(stream);
-            vid2ui[&stream] = idx;
+            auto stream = std::make_shared<cv::VideoCapture>(file);
+            streamIds.insert(std::pair(stream, idx));
             ++idx;
         }
 
@@ -37,15 +41,17 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
         while (processing) {
             std::vector<cv::Mat> frames;
             std::vector<int> out_idxs;
-            for (auto &s : streams) {
+            for(auto it = streamIds.begin(); it != streamIds.end(); ++it) {
                 cv::Mat frame;
-                if (s.read(frame)) {
+                if (it->first->read(frame)) {
                     frames.push_back(frame);
-                    out_idxs.push_back(vid2ui.at(&s));
+                    out_idxs.push_back(it->second);
                 } else {
-                    central_widget_.stopView(vid2ui[&s]);
+                    central_widget_.stopView(it->second);
+                    it = streamIds.erase(it);
                 }
             }
+
             if (out_idxs.empty()) {
                 processing = false;
                 return;
@@ -60,9 +66,16 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
                     central_widget_.putTo(out_idxs[idx], frames[idx], multi_output[idx]);
             }
             auto end = std::chrono::system_clock::now();
-            auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            std::string msg = "Processed: " + std::to_string(int_ms) + " msg";
+            sendOutput(msg);
         }
     }
     catch (const std::string &) {
     }
+}
+
+void MainWindow::sendOutput(const std::string &message) {
+    auto value_copy = std::string(message);
+    central_widget_.sendOutput(message);
 }

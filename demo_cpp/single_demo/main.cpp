@@ -54,74 +54,6 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &b
     return nullptr;
 }
 
-std::unique_ptr<BaseModelBatched> builderBatched(const std::string &name, const std::string &base_dir, const std::string &confidence, const std::vector<int> &classes, RUN_ON on) {
-    float conf = 0.3f;
-    try {
-        conf = std::stof(confidence);
-    }
-    catch (const std::exception&)
-    {
-    }
-    if (name == "YoloV3") {
-        std::string w = base_dir + "/yolov3_batch/yolov3.weights";
-        std::string c = base_dir + "/yolov3_batch/yolov3.cfg";
-        return std::make_unique<YoloV3Batched>(w, c, classes, conf, on);
-	} else if (name == "YoloV4") {
-		std::string w = base_dir + "/yolov4_batch/yolov4.weights";
-		std::string c = base_dir + "/yolov4_batch/yolov4.cfg";
-		return std::make_unique<YoloV4Batched>(w, c, classes, conf, on);
-	}
-    return nullptr;
-}
-
-void process_many_streams(const std::vector<std::string> &files, const std::string &name, const std::string &confidence) {
-    auto BASE_DIR = std::filesystem::current_path() / "models";
-    std::vector<int> classes{ 0 };
-
-    auto model = builderBatched(name, BASE_DIR.string(), confidence, classes, RUN_ON::GPU);
-    if (model) {
-        std::vector<cv::VideoCapture> streams;
-        int idx = 0;
-        for (const auto &file : files) {
-            //std::string win_name = "result_" + std::to_string(idx);
-            //cv::namedWindow(name, cv::WINDOW_AUTOSIZE);
-            streams.push_back(cv::VideoCapture(file));
-        }
-
-        bool processing = true;
-        while (processing) {
-            std::vector<cv::Mat> frames;
-            bool any_exists = false;
-            for (auto &s : streams) {
-                cv::Mat frame;
-                any_exists |= s.read(frame);
-                frames.push_back(frame);
-            }
-            if (!any_exists) {
-                processing = false;
-                return;
-            }
-            auto start = std::chrono::system_clock::now();
-            auto multi_output = model->process(frames);
-            auto end = std::chrono::system_clock::now();
-            auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            std::cout << "Detection time: " << int_ms.count() << " ms" << std::endl;
-
-            //std::size_t count = frames.size();
-            //for (std::size_t i = 0; i < count; ++i) {
-            //    for (const auto &bbox : multi_output[i]) {
-            //        cv::rectangle(frames[i], bbox.bbox, cv::Scalar(255, 0, 0), 2);
-            //    }
-            //}
-
-            /*for (auto & frame : frames) {
-                cv::imshow("result", frame);
-            }*/
-        }
-        //cv::destroyAllWindows();
-    }
-}
-
 void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
     auto BASE_DIR = std::filesystem::current_path() / "models";
 
@@ -175,7 +107,7 @@ void process_video_stream(const std::string &file, const std::string &name, cons
         cv::Mat frame;
         cv::VideoCapture stream(file);
 
-        //tracker::TrackersPool tracks(10);
+        tracker::TrackersPool tracks(10);
 
         cv::namedWindow("result", cv::WINDOW_AUTOSIZE);
         {
@@ -190,7 +122,6 @@ void process_video_stream(const std::string &file, const std::string &name, cons
                     cv::rectangle(frame, bbox.bbox, cv::Scalar(255, 0, 0), 2);
                 }
 
-#if 0
                 ///// THIS IS ONLY THE VISUALIZATION METHOD
                 ///// YOU CAN MAKE YOUR OWN !!!
                 auto overlay = frame.clone();
@@ -226,8 +157,6 @@ void process_video_stream(const std::string &file, const std::string &name, cons
                 auto total_end = std::chrono::system_clock::now();
                 auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_end - start);
                 std::cout << "Total time: " << total_ms.count() << " ms" << std::endl;
-
-#endif
                 cv::imshow("result", frame);
                 int key = cv::waitKey(1);
                 if (key == 27) {
@@ -242,7 +171,7 @@ void process_video_stream(const std::string &file, const std::string &name, cons
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
     p.add("-n", "--name", "Model name: [YoloV3, YoloV4]", ap::mode::REQUIRED);
-    ////p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
+    p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
     p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
 
     auto args = p.parse();
@@ -251,47 +180,7 @@ int main(int argc, char *argv[]) {
         std::cout << std::setw(12) << " where -c is confidience threshold, range [0.0, 1.0]" << std::endl;
         return 0;
     }
-
-    const std::vector<std::string> files4 = {
-        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4",
-        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4",
-        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4",
-        "f:\\developer02\\workspace\\data\\videos\\People - 6387.mp4"
-    };
-
-    const std::vector<std::string> files8 = {
-        "d:\\viktor_project\\test_data\\videos\\Running - 294.mp4",
-        "d:\\viktor_project\\test_data\\videos\\Subway - 6398.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-    };
-
-    const std::vector<std::string> files16 = {
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4",
-        "d:\\viktor_project\\test_data\\videos\\People - 6387.mp4"
-    };
-
-    process_many_streams(files4, args["-n"], args["-c"]);
-
-    //process_video_stream("d:\\viktor_project\\test_data\\videos\\Running - 294.mp4", args["-n"], args["-c"]);
+    process_video_stream(args["-f"], args["-n"], args["-c"]);
 
     return 0;
 }

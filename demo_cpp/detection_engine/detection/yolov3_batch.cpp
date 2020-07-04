@@ -29,7 +29,7 @@ std::vector<std::vector<DetectionResult>> YoloV3Batched::process(const std::vect
     std::vector<std::vector<cv::Mat> > ret;
     net_.forward(ret, output_layers_);
 
-    auto start = std::chrono::system_clock::now();
+    //auto start = std::chrono::system_clock::now();
 
     std::vector<std::vector<DetectionResult>> output(frames.size());
     std::vector<std::vector<cv::Rect >> bboxes(frames.size());
@@ -38,34 +38,19 @@ std::vector<std::vector<DetectionResult>> YoloV3Batched::process(const std::vect
 
     for (const auto &l1 : ret) {
         for (const auto &mat : l1) {
-            std::vector<cv::Mat> slides(frames.size());
             int planes = mat.size[0];
             int rows = mat.size[1];
             int cols = mat.size[2];
-            cv::Mat m2(rows, cols*planes, CV_32FC1, mat.data);
-            cv::Mat mat2planes = m2.reshape(frames.size());
-            cv::split(mat2planes, slides);
-            int idx = 0;
-            for (auto &slide : slides) {
-                auto width = frames[idx].size().width;
-                auto height = frames[idx].size().height;
+            for (int i = 0; i < planes; ++i) {
+                cv::Mat slice(rows, cols, CV_32FC1, mat.data + mat.step[0] * i);
+                auto width = frames[i].size().width;
+                auto height = frames[i].size().height;
 
-                double min = 0;
-                double max = 0;
-                cv::Point minLoc;
-                cv::Point maxLoc;
-
-                for (int row_it = 0; row_it < slide.rows; ++row_it) {
-                    const float * row_ptr = slide.ptr<float>(row_it);
-#if 1
-                    auto value_it = std::max_element(&row_ptr[5], &row_ptr[slide.cols]);
+                for (int row_it = 0; row_it < slice.rows; ++row_it) {
+                    const float * row_ptr = slice.ptr<float>(row_it);
+                    auto value_it = std::max_element(&row_ptr[5], &row_ptr[slice.cols]);
                     auto value = *value_it;
                     std::size_t class_id = std::distance(&row_ptr[5], value_it);
-#else 
-                    int class_id = -1;
-                    cv::minMaxIdx(row, nullptr, &max, nullptr, &class_id);
-                    float value = static_cast<float>(max);
-#endif
 
                     auto it = std::find(filtered_classes_.cbegin(), filtered_classes_.cend(), class_id);
                     if (it != filtered_classes_.cend() && value > conf_threshold_) {
@@ -75,12 +60,11 @@ std::vector<std::vector<DetectionResult>> YoloV3Batched::process(const std::vect
                         int h = static_cast<int>(row_ptr[3] * height);
                         int x = static_cast<int>(center_x - w / 2);
                         int y = static_cast<int>(center_y - h / 2);
-                        bboxes[idx].push_back(cv::Rect(x, y, w, h));
-                        scores[idx].push_back(value);
-                        classes[idx].push_back(class_id);
+                        bboxes[i].push_back(cv::Rect(x, y, w, h));
+                        scores[i].push_back(value);
+                        classes[i].push_back(class_id);
                     }
                 }
-                ++idx;
             }
         }
     }
@@ -93,9 +77,8 @@ std::vector<std::vector<DetectionResult>> YoloV3Batched::process(const std::vect
             output[i].push_back({ bboxes[i][idx], classes[i][idx] });
         }
     }
-
-    auto end = std::chrono::system_clock::now();
-    auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "getting data time: " << int_ms.count() << " ms" << std::endl;
+    //auto end = std::chrono::system_clock::now();
+    //auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    //std::cout << "getting data time: " << int_ms.count() << " ms" << std::endl;
     return output;
 }

@@ -15,6 +15,9 @@ public:
     ~MainWindow();
 
     void Process(const std::string &name, const std::string &conf, const std::vector<std::string> &files);
+
+    void sendOutput(const std::string &message);
+
 protected:
     void ProcessImpl(const std::string &name, const std::string &conf, const std::vector<std::string> &files);
 

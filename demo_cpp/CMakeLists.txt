@@ -16,7 +16,11 @@ else()
 	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_master/opencv_release")
 endif()
 
-
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(BUILD_ARCH 64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(BUILD_ARCH 32)
+endif()
 
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
