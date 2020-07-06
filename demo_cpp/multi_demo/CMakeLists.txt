@@ -41,6 +41,8 @@ set(SOURCE_FILES
 		"main_window.cpp"
 		"model_builder.h"
 		"model_builder.cpp"
+		"track_processor.h"
+		"track_processor.cpp"
 		"main.cpp"
    )
 

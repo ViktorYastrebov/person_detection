@@ -8,7 +8,7 @@ int main(int argc, char*argv[]) {
     QApplication app(argc, argv);
     MainWindow win;
 
-    constexpr const int MAX_FILES = 4;
+    constexpr const std::size_t MAX_FILES = 4;
 
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -31,6 +31,9 @@ int main(int argc, char*argv[]) {
     std::vector<std::string> inputs;
 
     auto qfiles = parser.values(filesOption);
+    if (qfiles.size() > MAX_FILES) {
+        return 0;
+    }
     for (const auto &f : qfiles) {
         inputs.push_back(f.toStdString());
     }

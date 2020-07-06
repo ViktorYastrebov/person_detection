@@ -1,6 +1,7 @@
 #include "main_window.h"
 #include "model_builder.h"
 #include "base_model.h"
+#include "track_processor.h"
 #include <opencv2/videoio.hpp>
 
 MainWindow::MainWindow()
@@ -29,11 +30,15 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
         auto model = builder.build(files, { 0 }, RUN_ON::GPU);
         sendOutput("model loaded");
 
-        std::map<std::shared_ptr<cv::VideoCapture>, int> streamIds;
+        using Stream2TrackType = std::map<std::shared_ptr<cv::VideoCapture>, std::shared_ptr<TrackProcessor>>;
+        Stream2TrackType streams2tracks;
+
         int idx = 0;
         for (const auto &file : files) {
             auto stream = std::make_shared<cv::VideoCapture>(file);
-            streamIds.insert(std::pair(stream, idx));
+            auto track = std::make_shared<TrackProcessor>(idx, central_widget_);
+            streams2tracks.insert(std::pair(stream, track));
+            track->start();
             ++idx;
         }
 
@@ -42,35 +47,43 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
             std::vector<cv::Mat> frames;
             std::vector<int> out_idxs;
 
-            auto it = streamIds.begin();
-            while(it != streamIds.end()) {
+            auto it = streams2tracks.begin();
+            while(it != streams2tracks.end()) {
                 cv::Mat frame;
                 if (it->first->read(frame)) {
                     frames.push_back(frame);
-                    out_idxs.push_back(it->second);
+                    //out_idxs.push_back(it->second);
                     ++it;
                 } else {
-                    central_widget_.stopView(it->second);
-                    it = streamIds.erase(it);
+                    it->second->stop();
+                    central_widget_.stopView(it->second->getId());
+                    it = streams2tracks.erase(it);
                 }
             }
 
-            if (out_idxs.empty()) {
+            if (frames.empty()) {
                 processing = false;
                 return;
             }
 
             auto start = std::chrono::system_clock::now();
             {
+                //Here need to pass correct output to track
+                Stream2TrackType::iterator it = streams2tracks.begin();
                 auto multi_output = model->process(frames);
-                //here is possible case when 1 video end before others
-                // so make named map for each object
-                for (int idx = 0; idx < multi_output.size(); ++idx)
+                for (it; it != streams2tracks.end(); ++it) {
+                    it->second->put({ frames[it->second->getId()], multi_output[it->second->getId()] });
+                }
+#if 0
+                auto multi_output = model->process(frames);
+                for (int idx = 0; idx < multi_output.size(); ++idx) {
                     central_widget_.putTo(out_idxs[idx], frames[idx], multi_output[idx]);
+                }
+#endif
             }
             auto end = std::chrono::system_clock::now();
             auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            std::string msg = "Processed: " + std::to_string(int_ms) + " ms";
+            std::string msg = "Detection time: " + std::to_string(int_ms) + " ms";
             sendOutput(msg);
         }
     }
