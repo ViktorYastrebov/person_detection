@@ -30,12 +30,12 @@ void DisplayFrame::paintEvent(QPaintEvent *p) {
     if (!stop_) {
         InputData data;
         if (queue_.try_pop(data)) {
-            auto parent = parentWidget();
-            auto central_widget = dynamic_cast<CentralWidget*>(parent);
-            if (central_widget) {
-                std::string msg = "Found detections : " + std::to_string(data.results.size());
-                central_widget->sendOutput(msg);
-            }
+            //auto parent = parentWidget();
+            //auto central_widget = dynamic_cast<CentralWidget*>(parent);
+            //if (central_widget) {
+            //    std::string msg = "Found detections : " + std::to_string(data.results.size());
+            //    central_widget->sendOutput(msg);
+            //}
             for (const auto &rect : data.results) {
                 cv::rectangle(data.frame, rect.bbox, cv::Scalar(0, 0, 255), 1);
             }
@@ -199,5 +199,6 @@ void CentralWidget::stopView(int idx) {
 }
 
 void CentralWidget::sendOutput(const std::string &msg) {
-    output_->append(QString(msg.c_str()));
+	QString qmsg(msg.c_str());
+    output_->append(qmsg);
 }

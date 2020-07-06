@@ -60,7 +60,7 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
                 return;
             }
 
-            auto start = std::chrono::system_clock::now();
+            //auto start = std::chrono::system_clock::now();
             {
                 auto multi_output = model->process(frames);
                 //here is possible case when 1 video end before others
@@ -68,10 +68,10 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
                 for (int idx = 0; idx < multi_output.size(); ++idx)
                     central_widget_.putTo(out_idxs[idx], frames[idx], multi_output[idx]);
             }
-            auto end = std::chrono::system_clock::now();
-            auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            std::string msg = "Processed: " + std::to_string(int_ms) + " ms";
-            sendOutput(msg);
+            //auto end = std::chrono::system_clock::now();
+            //auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            //std::string msg = "Processed: " + std::to_string(int_ms) + " ms";
+            //sendOutput(msg);
         }
     }
     catch (const std::string &) {
