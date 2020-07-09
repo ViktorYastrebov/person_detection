@@ -19,23 +19,23 @@ class DeepSort(object):
         metric = NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
         self.tracker = Tracker(metric)
 
-    def update(self, bbox_xyxy, confidences, ori_img):
+    def update(self, bbox_xywh, confidences, ori_img):
         self.height, self.width = ori_img.shape[:2]
 
         # generate detections
-        try:
-            start = time.time()
-            features = self._get_features(bbox_xyxy, ori_img)
-            end = time.time()
-            exec_time = end - start
-            print(f"get features time : {(1000 * exec_time)} ms")
-        except:
-            print('a')
-        detections = [Detection(bbox_xyxy[i], conf, features[i]) for i, conf in enumerate(confidences) if
+        # try:
+        start = time.time()
+        features = self._get_features(bbox_xywh, ori_img)
+        end = time.time()
+        exec_time = end - start
+        print(f"get features time : {(1000 * exec_time)} ms")
+        # except:
+        #    print('a')
+        detections = [Detection(bbox_xywh[i], conf, features[i]) for i, conf in enumerate(confidences) if
                       conf > self.min_confidence]
 
         # run on non-maximum supression
-        boxes = np.array([d.xyxy for d in detections])
+        boxes = np.array([d.tlwh for d in detections])
         scores = np.array([d.confidence for d in detections])
         indices = non_max_suppression(boxes, self.nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
@@ -58,14 +58,14 @@ class DeepSort(object):
 
         return outputs
 
-    # # for centernet (x1,x2 w,h -> x1,y1,x2,y2)
-    # def _xywh_to_xyxy_centernet(self, bbox_xywh):
-    #     x1, y1, w, h = bbox_xywh
-    #     x1 = max(x1, 0)
-    #     y1 = max(y1, 0)
-    #     x2 = min(int(x1 + w), self.width - 1)
-    #     y2 = min(int(y1 + h), self.height - 1)
-    #     return int(x1), int(y1), x2, y2
+    # for centernet (x1,x2 w,h -> x1,y1,x2,y2)
+    def _xywh_to_xyxy_centernet(self, bbox_xywh):
+        x1, y1, w, h = bbox_xywh
+        x1 = max(x1, 0)
+        y1 = max(y1, 0)
+        x2 = min(int(x1 + w), self.width - 1)
+        y2 = min(int(y1 + h), self.height - 1)
+        return int(x1), int(y1), x2, y2
 
     # for yolo  (centerx,centerx, w,h -> x1,y1,x2,y2)
     # def _xywh_to_xyxy_yolo(self, bbox_xywh):
@@ -79,8 +79,8 @@ class DeepSort(object):
     def _get_features(self, bbox_xyxy, ori_img):
         features = []
         for box in bbox_xyxy:
-            # x1, y1, x2, y2 = self._xywh_to_xyxy_centernet(box)
-            x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
+            x1, y1, x2, y2 = self._xywh_to_xyxy_centernet(box)
+            # x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
             im = ori_img[y1:y2, x1:x2]
             feature = self.extractor(im)[0]
             features.append(feature)

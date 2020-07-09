@@ -195,13 +195,16 @@ class YolosV5:
                 #     n = (det[:, -1] == c).sum()  # detections per class
                 #     s += '%g %ss, ' % (n, names[int(c)])  # add to string
 
+                cpu_det = det.to(torch.device('cpu')).detach().numpy()
                 # Write results
-                for *xyxy, conf, cls in det:
+                # for *xyxy, conf, cls in det:
+                for *xyxy, conf, cls in cpu_det:
                     # cv2.rectangle(frame, (xyxy[0], xyxy[1]), (xyxy[2], xyxy[3]), (255, 0, 0), 2)
-                    bboxes.append(np.asarray([xyxy[0], xyxy[1], xyxy[2], xyxy[3]]))
+                    bboxes.append(np.asarray([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])]))
                     confs.append(conf)
         # return np.asarray(bboxes), confs, frame
         return np.asarray(bboxes), confs
+        # return frame
 
     def _convert_img(self, img, new_shape=(640, 640), color=(114, 114, 114),
                      auto=True, scale_fill=False, scale_up=True):
