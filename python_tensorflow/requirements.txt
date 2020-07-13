@@ -1,0 +1,8 @@
+1. conda create --no-default-packages -n demo_env python==3.7.3
+2. conda install tensorflow-gpu==1.15.0 tensorboard cudatoolkit==10.0
+3. pip install opencv-python
+   pip install tf2onnx
+   pip install scipy
+   pip install matplotlib
+   pip install filterpy
+   

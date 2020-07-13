@@ -7,22 +7,15 @@ YoloV3::YoloV3(const std::string &path, const std::string &config, const std::ve
     , filtered_classes_(classes)
 {
     net_ = cv::dnn::readNet(path, config);
-    //INFO: can map into different structure like GPU -> autodetection CUDA or OpenCL GPU device
     if (device == RUN_ON::GPU) {
         net_.setPreferableBackend(cv::dnn::Backend::DNN_BACKEND_CUDA);
         net_.setPreferableTarget(cv::dnn::Target::DNN_TARGET_CUDA);
     }
-    /*else if (device == RUN_ON::OPENCL) {
-        net_.setPreferableBackend(cv::dnn::Backend::DNN_BACKEND_OPENCV);
-        putenv("OPENCV_OPENCL_DEVICE=:GPU:0");
-        net_.setPreferableTarget(cv::dnn::Target::DNN_TARGET_OPENCL);
-    }*/
     output_layers_ = net_.getUnconnectedOutLayersNames();
 }
 
 std::vector<DetectionResult> YoloV3::process(const cv::Mat &frame) {
     constexpr const double NORM_FACTOR = 1.0 / 255.0;
-    constexpr const int PERSON_CLASS_ID = 0;
 
     net_.setInput(cv::dnn::blobFromImage(frame, NORM_FACTOR, cv::Size(INPUT_SIZE, INPUT_SIZE), cv::Scalar(0,0,0), true, false));
 

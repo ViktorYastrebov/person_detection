@@ -21,8 +21,6 @@ YoloV3Batched::YoloV3Batched(const std::string &path, const std::string &config,
 
 std::vector<std::vector<DetectionResult>> YoloV3Batched::process(const std::vector<cv::Mat> &frames) {
     constexpr const double NORM_FACTOR = 1.0 / 255.0;
-    constexpr const int PERSON_CLASS_ID = 0;
-
     auto blob = cv::dnn::blobFromImages(frames, NORM_FACTOR, cv::Size(INPUT_SIZE, INPUT_SIZE), cv::Scalar(0, 0, 0), true, false);
     net_.setInput(blob);
 

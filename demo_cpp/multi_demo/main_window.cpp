@@ -84,7 +84,7 @@ void MainWindow::ProcessImpl(const std::string &name, const std::string &conf, c
             auto end = std::chrono::system_clock::now();
             auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             std::string msg = "Detection time: " + std::to_string(int_ms) + " ms";
-            sendOutput(msg);
+            //sendOutput(msg);
         }
     }
     catch (const std::string &) {

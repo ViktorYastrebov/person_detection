@@ -8,8 +8,8 @@
 #include <opencv2/imgproc.hpp>
 #include "yolov3_model.h"
 #include "yolov4_model.h"
-#include "yolov3_batch.h"
-#include "yolov4_batch.h"
+#include "yolo_tiny.h"
+#include "yolov3_spp.h"
 
 #include "trackers_pool.h"
 #include "utils.h"
@@ -50,8 +50,52 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::string &b
         std::string w = base_dir + "/yolo_v4/yolov4.weights";
         std::string c = base_dir + "/yolo_v4/yolov4.cfg";
         return std::make_unique<YoloV4>(w, c, classes, conf, on);
+    } else if (name == "YoloTiny") {
+        std::string w = base_dir + "/yolov3_tiny/yolov3-tiny.weights";
+        std::string c = base_dir + "/yolov3_tiny/yolov3-tiny.cfg";
+        return std::make_unique<YoloV3Tiny>(w, c, classes, conf, on);
+    } else if (name == "YoloV3SPP") {
+        std::string w = base_dir + "/yolo3-spp/yolov3-spp.onnx";
+        return std::make_unique<YoloV3SPP>(w, classes, conf, on);
     }
     return nullptr;
+}
+
+std::unique_ptr<BaseModel> builder(const std::string &name, const std::filesystem::path &base_dir, float conf, const std::vector<int> &classes, RUN_ON on) {
+    if (name == "YoloV3") {
+        auto w = base_dir / "yolo_v3/yolov3.weights";
+        auto c = base_dir / "yolo_v3/yolov3.cfg";
+        return std::make_unique<YoloV3>(w.string(), c.string(), classes, conf, on);
+    } else if (name == "YoloV4") {
+        auto w = base_dir / "yolo_v4/yolov4.weights";
+        auto c = base_dir / "yolo_v4/yolov4.cfg";
+        return std::make_unique<YoloV4>(w.string(), c.string(), classes, conf, on);
+    } else if (name == "YoloTiny") {
+        auto w = base_dir / "yolov3_tiny/yolov3-tiny.weights";
+        auto c = base_dir / "yolov3_tiny/yolov3-tiny.cfg";
+        return std::make_unique<YoloV3Tiny>(w.string(), c.string(), classes, conf, on);
+    } else if (name == "YoloV3SPP") {
+        auto w = base_dir / "yolo3-spp/yolov3-spp.onnx";
+        return std::make_unique<YoloV3SPP>(w.string(), classes, conf, on);
+    }
+    return nullptr;
+}
+
+// INFO: for debug only
+void process_single_image(const std::string &file, const std::string &name) {
+    auto BASE_DIR = std::filesystem::current_path() / "models";
+    setBestCUDADevice();
+    auto model = builder(name, BASE_DIR.string(), 0.3, {0}, RUN_ON::GPU);
+
+    if (model) {
+        cv::Mat frame = cv::imread(file);
+        auto output = model->process(frame);
+
+        //for (const auto &bbox : output) {
+        //    cv::rectangle(frame, bbox.bbox, cv::Scalar(255, 0, 0), 2);
+        //}
+        //cv::imwrite("out.png", frame);
+    }
 }
 
 void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
@@ -124,34 +168,36 @@ void process_video_stream(const std::string &file, const std::string &name, cons
 
                 ///// THIS IS ONLY THE VISUALIZATION METHOD
                 ///// YOU CAN MAKE YOUR OWN !!!
-                auto overlay = frame.clone();
-                auto tracks_output = tracks.update(output);
-                for (const auto &result : tracks_output) {
-                    auto class_color = classIdToColor[result.class_id];
-                    cv::rectangle(frame, result.bbox, class_color, 1);
-                    std::string str = std::to_string(result.id) + " " + id_classes[result.class_id];
+                if (output.size() > 0) {
+                    auto overlay = frame.clone();
+                    auto tracks_output = tracks.update(output);
+                    for (const auto &result : tracks_output) {
+                        auto class_color = classIdToColor[result.class_id];
+                        cv::rectangle(frame, result.bbox, class_color, 1);
+                        std::string str = std::to_string(result.id) + " " + id_classes[result.class_id];
 
-                    constexpr int TILE_HEIGHT = 10;
-                    cv::Rect tileRect;
-                    if ((result.bbox.y - TILE_HEIGHT) > 0) {
-                        tileRect.x = result.bbox.x;
-                        tileRect.y = result.bbox.y - TILE_HEIGHT;
-                        tileRect.width = result.bbox.width;
-                        tileRect.height = TILE_HEIGHT;
-                    } else {
-                        tileRect.y = result.bbox.y + result.bbox.height;
-                        tileRect.x = result.bbox.x;
-                        tileRect.width = result.bbox.width;
-                        tileRect.height = TILE_HEIGHT;
+                        constexpr int TILE_HEIGHT = 10;
+                        cv::Rect tileRect;
+                        if ((result.bbox.y - TILE_HEIGHT) > 0) {
+                            tileRect.x = result.bbox.x;
+                            tileRect.y = result.bbox.y - TILE_HEIGHT;
+                            tileRect.width = result.bbox.width;
+                            tileRect.height = TILE_HEIGHT;
+                        } else {
+                            tileRect.y = result.bbox.y + result.bbox.height;
+                            tileRect.x = result.bbox.x;
+                            tileRect.width = result.bbox.width;
+                            tileRect.height = TILE_HEIGHT;
+                        }
+                        //INFO: It's not the best way to draw the labels, under OpenCV interface
+                        //      it's hard to fit the text to the box, so I leave the constants for now
+                        cv::rectangle(overlay, tileRect, class_color, cv::FILLED);
+                        cv::Point p(tileRect.x, tileRect.y + 5);
+                        cv::putText(frame, str, p, 0, 0.3, (127, 127, 127), 2); //VERY COST OP
                     }
-                    //INFO: It's not the best way to draw the labels, under OpenCV interface
-                    //      it's hard to fit the text to the box, so I leave the constants for now
-                    cv::rectangle(overlay, tileRect, class_color, cv::FILLED);
-                    cv::Point p(tileRect.x, tileRect.y + 5);
-                    cv::putText(frame, str, p, 0, 0.3, (127, 127, 127), 2); //VERY COST OP
+                    auto alpha = 0.4;
+                    cv::addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame);
                 }
-                auto alpha = 0.4;
-                cv::addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame);
 
                 //////////////////////////////////
                 auto total_end = std::chrono::system_clock::now();
@@ -162,6 +208,7 @@ void process_video_stream(const std::string &file, const std::string &name, cons
                 if (key == 27) {
                     break;
                 }
+
             }
         }
         cv::destroyAllWindows();
@@ -176,11 +223,14 @@ int main(int argc, char *argv[]) {
 
     auto args = p.parse();
     if (!args.parsed_successfully()) {
-        std::cout << "Usage demo_cpp.exe -n[\"YoloV3\" | \"YoloV4\"] -f \"path_to_file\" -c x.x" << std::endl;
+        std::cout << "Usage demo_cpp.exe -n[\"YoloV3\" | \"YoloV4\" | \"YoloTiny\"] -f \"path_to_file\" -c x.x" << std::endl;
         std::cout << std::setw(12) << " where -c is confidience threshold, range [0.0, 1.0]" << std::endl;
         return 0;
     }
-    process_video_stream(args["-f"], args["-n"], args["-c"]);
+
+    std::string test_img = "d:/viktor_project/person_detection/test.png";
+    //process_video_stream(args["-f"], args["-n"], args["-c"]);
+    process_single_image(test_img, args["-n"]);
 
     return 0;
 }
