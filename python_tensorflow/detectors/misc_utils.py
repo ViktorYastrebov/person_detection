@@ -36,8 +36,9 @@ def parse_anchors(anchor_path):
     parse anchors.
     returned data: shape [N, 2], dtype float32
     """
-    anchors = np.reshape(np.asarray(open(anchor_path, 'r').read().split(','), np.float32), [-1, 2])
-    return anchors
+    with open(anchor_path, 'r') as f:
+        anchors = np.reshape(np.asarray(f.read().split(','), np.float32), [-1, 2])
+        return anchors
 
 
 def read_class_names(class_name_path):
