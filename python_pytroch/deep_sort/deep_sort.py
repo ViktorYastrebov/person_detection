@@ -58,8 +58,10 @@ class DeepSort(object):
 
         return outputs
 
-    # for centernet (x1,x2 w,h -> x1,y1,x2,y2)
-    def _xywh_to_xyxy_centernet(self, bbox_xywh):
+    def _xywh_to_xyxy(self, bbox_xywh):
+        """
+        Converts from (x1,x2 w,h) -> x1,y1,x2,y2)
+        """
         x1, y1, w, h = bbox_xywh
         x1 = max(x1, 0)
         y1 = max(y1, 0)
@@ -67,25 +69,14 @@ class DeepSort(object):
         y2 = min(int(y1 + h), self.height - 1)
         return int(x1), int(y1), x2, y2
 
-    # for yolo  (centerx,centerx, w,h -> x1,y1,x2,y2)
-    # def _xywh_to_xyxy_yolo(self, bbox_xywh):
-    #     x, y, w, h = bbox_xywh
-    #     x1 = max(int(x - w / 2), 0)
-    #     x2 = min(int(x + w / 2), self.width - 1)
-    #     y1 = max(int(y - h / 2), 0)
-    #     y2 = min(int(y + h / 2), self.height - 1)
-    #     return x1, y1, x2, y2
-
-    def _get_features(self, bbox_xyxy, ori_img, bacthing=64):
-        features = []
-        for box in bbox_xyxy:
-            x1, y1, x2, y2 = self._xywh_to_xyxy_centernet(box)
-            # x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
+    def _get_features(self, bbox_xywh, ori_img):
+        im_crops = []
+        for box in bbox_xywh:
+            x1, y1, x2, y2 = self._xywh_to_xyxy(box)
             im = ori_img[y1:y2, x1:x2]
-            feature = self.extractor(im)[0]
-            features.append(feature)
-        if len(features):
-            features = np.stack(features, axis=0)
+            im_crops.append(im)
+        if im_crops:
+            features = self.extractor(im_crops)
         else:
             features = np.array([])
         return features
