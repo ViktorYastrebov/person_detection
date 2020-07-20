@@ -11,6 +11,8 @@
 #include "yolo_tiny.h"
 #include "yolov3_spp.h"
 
+//#include "tracker/deep_sort.h"
+
 #include "trackers_pool.h"
 #include "utils.h"
 #include <filesystem>
@@ -83,13 +85,21 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::filesyste
 
 // INFO: for debug only
 void process_single_image(const std::string &file, const std::string &name) {
-    auto BASE_DIR = std::filesystem::current_path() / "models";
+    auto MODELS_BASE_DIR = std::filesystem::current_path() / "models";
     setBestCUDADevice();
-    auto model = builder(name, BASE_DIR.string(), 0.3, {0}, RUN_ON::GPU);
+    auto model = builder(name, MODELS_BASE_DIR.string(), 0.3f, {0}, RUN_ON::GPU);
+
+    // auto deep_sort_path = MODELS_BASE_DIR / "deep_sort_mars_128" / "deep_sort_10.onnx";
+    // auto deep_sort_path = MODELS_BASE_DIR / "deep_sort_mars_128" / "deep_sort_modified.onnx";
+    auto deep_sort_path = MODELS_BASE_DIR / "pytorch_deep_sort" / "deep_sort.onnx";
+    
+    //DeepSortModel deepSort(deep_sort_path.string(), RUN_ON::GPU);
 
     if (model) {
         cv::Mat frame = cv::imread(file);
         auto output = model->process(frame);
+
+        //auto features = deepSort.getFeatures(frame, output);
 
         //for (const auto &bbox : output) {
         //    cv::rectangle(frame, bbox.bbox, cv::Scalar(255, 0, 0), 2);
@@ -218,8 +228,8 @@ void process_video_stream(const std::string &file, const std::string &name, cons
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
     p.add("-n", "--name", "Model name: [YoloV3, YoloV4]", ap::mode::REQUIRED);
-    p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
-    p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
+    //p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
+    //p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
 
     auto args = p.parse();
     if (!args.parsed_successfully()) {
@@ -228,7 +238,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    std::string test_img = "d:/viktor_project/person_detection/test.png";
+    std::string test_img = "d:/viktor_project/person_detection/test_img.png";
     //process_video_stream(args["-f"], args["-n"], args["-c"]);
     process_single_image(test_img, args["-n"]);
 

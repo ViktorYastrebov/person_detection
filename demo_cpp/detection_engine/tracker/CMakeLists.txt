@@ -15,8 +15,6 @@ set(SOURCE_FILES
 		"trackers_pool.cpp"
 		"Hungarian.h"
 		"Hungarian.cpp"
-		"deep_sort.h"
-		"deep_sort.cpp"
 	)
 
 add_library(tracker_engine SHARED ${SOURCE_FILES})

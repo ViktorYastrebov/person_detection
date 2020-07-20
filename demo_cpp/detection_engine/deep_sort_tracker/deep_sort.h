@@ -6,14 +6,21 @@
 #include "base_model.h"
 #include "device_utils.h"
 
-class TRACKER_ENGINE DeepSortModel final {
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
+
+class DEEP_SORT_TRACKER DeepSortModel final {
 public:
+    using FeaturesType = std::vector<float>;
     DeepSortModel(const std::string &model_path, RUN_ON device = RUN_ON::CPU);
     ~DeepSortModel() = default;
 
-    void test_output(cv::Mat frame, const std::vector<DetectionResult> &detections);
+    std::vector<FeaturesType> getFeatures(cv::Mat frame, const std::vector<DetectionResult> &detections);
 
 private:
     cv::dnn::Net net_;
     std::vector<cv::String> output_layers_;
 };
+
+#pragma warning(pop)
