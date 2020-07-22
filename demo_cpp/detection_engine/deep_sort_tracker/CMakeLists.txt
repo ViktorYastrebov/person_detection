@@ -14,6 +14,7 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 set(SOURCE_FILES
 		"decl_spec.h"
 		"common.h"
+		"common.cpp"
 		"deep_sort.h"
 		"deep_sort.cpp"
 		"hungarian_eigen/hungarian.h"

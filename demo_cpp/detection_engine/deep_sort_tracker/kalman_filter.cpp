@@ -18,9 +18,9 @@ KalmanFilter::KalmanFilter()
     _std_weight_velocity = 1.0 / 160;
 }
 
-KalmanFilter::MatResult KalmanFilter::initiate(const DetectionResult& measurement) {
-    MatDetection mean_pos({ measurement.bbox.x, measurement.bbox.y, measurement.bbox.width, measurement.bbox.height });
-    MatDetection mean_vel({ 0,0,0,0 });
+KalmanFilter::MatResult KalmanFilter::initiate(const DetectionBox& measurement) {
+    DetectionBox mean_pos = measurement;
+    DetectionBox mean_vel({ 0,0,0,0 });
     //for (int i = 0; i < 4; i++) {
     //    mean_vel(i) = 0;
     //}
@@ -46,14 +46,14 @@ KalmanFilter::MatResult KalmanFilter::initiate(const DetectionResult& measuremen
     //std(6) = 1e-5;
     //std(7) = 10 * _std_weight_velocity * measurement[3];
 
-    std(0) = 2 * _std_weight_position * measurement.bbox.width;
-    std(1) = 2 * _std_weight_position * measurement.bbox.width;
+    std(0) = 2 * _std_weight_position * measurement[3];
+    std(1) = 2 * _std_weight_position * measurement[3];
     std(2) = 1e-2;
-    std(3) = 2 * _std_weight_position * measurement.bbox.width;
-    std(4) = 10 * _std_weight_velocity * measurement.bbox.width;
-    std(5) = 10 * _std_weight_velocity * measurement.bbox.width;
+    std(3) = 2 * _std_weight_position * measurement[3];
+    std(4) = 10 * _std_weight_velocity * measurement[3];
+    std(5) = 10 * _std_weight_velocity * measurement[3];
     std(6) = 1e-5;
-    std(7) = 10 * _std_weight_velocity * measurement.bbox.width;
+    std(7) = 10 * _std_weight_velocity * measurement[3];
 
     KalmanMeanMatType tmp = std.array().square();
     KalmanCovAMatType var = tmp.asDiagonal();
@@ -103,29 +103,21 @@ KalmanFilter::HMatResult KalmanFilter::project(const KalmanMeanMatType& mean, co
     return { mean1, covariance1 };
 }
 
-KalmanFilter::MatResult KalmanFilter::update(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const DetectionResult& measurement) {
+KalmanFilter::MatResult KalmanFilter::update(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const DetectionBox& measurement) {
     auto pa = project(mean, covariance);
     KalmanHMeanType projected_mean = pa.hmean;
     KalmanHCovType projected_cov = pa.hconv;
 
-    //chol_factor, lower =
-    //scipy.linalg.cho_factor(projected_cov, lower=True, check_finite=False)
-    //kalmain_gain =
-    //scipy.linalg.cho_solve((cho_factor, lower),
-    //np.dot(covariance, self._upadte_mat.T).T,
-    //check_finite=False).T
-    MatDetection measure_mat({ measurement.bbox.x, measurement.bbox.y, measurement.bbox.width, measurement.bbox.height });
-
     Eigen::Matrix<float, 4, 8> B = (covariance * (_update_mat.transpose())).transpose();
     Eigen::Matrix<float, 8, 4> kalman_gain = (projected_cov.llt().solve(B)).transpose(); // eg.8x4
-    Eigen::Matrix<float, 1, 4> innovation = measure_mat - projected_mean; //eg.1x4
+    Eigen::Matrix<float, 1, 4> innovation = measurement - projected_mean; //eg.1x4
     auto tmp = innovation * (kalman_gain.transpose());
     KalmanMeanMatType new_mean = (mean.array() + tmp.array()).matrix();
     KalmanCovAMatType new_covariance = covariance - kalman_gain * projected_cov*(kalman_gain.transpose());
     return { new_mean, new_covariance };
 }
 
-Eigen::Matrix<float, 1, -1> KalmanFilter::gating_distance(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const std::vector<DetectionResult>& measurements, bool only_position) {
+Eigen::Matrix<float, 1, -1> KalmanFilter::gating_distance(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const std::vector<DetectionBox>& measurements, bool only_position) {
     auto pa = project(mean, covariance);
     if (only_position) {
         //printf("not implement!");
@@ -141,9 +133,9 @@ Eigen::Matrix<float, 1, -1> KalmanFilter::gating_distance(const KalmanMeanMatTyp
     int pos = 0;
     //TODO: investigate to use the detections as th EigenMat
     //      cost of refactoring
-    for (const auto det : measurements) {
-        MatDetection mat_box({ det.bbox.x, det.bbox.y, det.bbox.width, det.bbox.height });
-        d.row(pos++) = mat_box - mean1;
+    for (const auto &det : measurements) {
+        //MatDetection mat_box({ det.bbox.x, det.bbox.y, det.bbox.width, det.bbox.height });
+        d.row(pos++) = det - mean1;
     }
     Eigen::Matrix<float, -1, -1, Eigen::RowMajor> factor = covariance1.llt().matrixL();
     Eigen::Matrix<float, -1, -1> z = factor.triangularView<Eigen::Lower>().solve<Eigen::OnTheRight>(d).transpose();

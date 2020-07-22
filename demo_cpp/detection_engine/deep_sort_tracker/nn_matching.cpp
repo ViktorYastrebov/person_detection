@@ -18,7 +18,8 @@ Eigen::VectorXf NearNeighborDisMetric::EuclidianMetricDistance::process(const Fe
 }
 
 Eigen::MatrixXf NearNeighborDisMetric::EuclidianMetricDistance::preprocess(const Features& x, const Features& y) const {
-    int len1 = x.rows(), len2 = y.rows();
+    auto len1 = x.rows();
+    auto len2 = y.rows();
     if (len1 == 0 || len2 == 0) {
         return Eigen::MatrixXf::Zero(len1, len2);
     }
@@ -68,9 +69,9 @@ void NearNeighborDisMetric::partial_fit(std::vector<TrackerFeatures>& tid_feats,
         Features newFeatOne = data.second;
 
         if (samples.find(track_id) != samples.end()) {//append
-            int oldSize = samples[track_id].rows();
-            int addSize = newFeatOne.rows();
-            int newSize = oldSize + addSize;
+            auto oldSize = samples[track_id].rows();
+            auto addSize = newFeatOne.rows();
+            auto newSize = oldSize + addSize;
 
             if (newSize <= this->budget_) {
                 Features newSampleFeatures(newSize, FEATURES_SIZE);
@@ -103,8 +104,6 @@ void NearNeighborDisMetric::partial_fit(std::vector<TrackerFeatures>& tid_feats,
         }
     }//add features;
 
-    //TODO: check, looks strange
-    //erase the samples which not in active_targets;
     for (SamplesMapType::iterator i = samples.begin(); i != samples.end();) {
         bool flag = false;
         for (int j : active_targets) {
@@ -112,11 +111,11 @@ void NearNeighborDisMetric::partial_fit(std::vector<TrackerFeatures>& tid_feats,
                 flag = true;
                 break;
             }
-            if (flag == false) {
-                samples.erase(i++);
-            } else {
-                i++;
-            }
+        }
+        if (!flag) {
+            samples.erase(i++);
+        } else {
+            ++i;
         }
     }
 }

@@ -1,4 +1,5 @@
 #include "linear_assignment.h"
+#include "hungarian_eigen/hungarian.h"
 #include <map>
 
 namespace linear_assignment {
@@ -19,11 +20,13 @@ namespace linear_assignment {
 
     TrackerMatch matching_cascade(Tracker* distance_metric,
         //tracker::GATED_METRIC_FUNC distance_metric_func,
+        Tracker::MetricFunction metric_function,
         float max_distance,
         int cascade_depth,
         std::vector<Track>& tracks,
         //const DETECTIONS& detections,
-        const std::vector<DetectionResult> &detections,
+        //const std::vector<DetectionResult> &detections,
+        const Detections &detections,
         std::vector<int> &track_indices,
         std::vector<int> detection_indices)
     {
@@ -56,10 +59,18 @@ namespace linear_assignment {
             }
             if (track_indices_l.size() == 0) continue; //Nothing to match at this level.
 
+
             TrackerMatch tmp = min_cost_matching(
                 distance_metric,
+                metric_function,
                 max_distance, tracks, detections, track_indices_l,
                 unmatched_detections);
+
+            //INFO: depends on the function
+            //TrackerMatch tmp = min_cost_matching(
+            //    distance_metric,
+            //    max_distance, tracks, detections, track_indices_l,
+            //    unmatched_detections);
             //TODO: refactor
             unmatched_detections.assign(tmp.unmatched_detections.begin(), tmp.unmatched_detections.end());
             for (size_t i = 0; i < tmp.matches.size(); i++) {
@@ -80,10 +91,12 @@ namespace linear_assignment {
     TrackerMatch min_cost_matching(
         Tracker* distance_metric,
         //tracker::GATED_METRIC_FUNC distance_metric_func,
+        Tracker::MetricFunction metric_function,
         float max_distance,
         std::vector<Track>& tracks,
         //const DETECTIONS& detections,
-        const std::vector<DetectionResult> &detections,
+        //const std::vector<DetectionResult> &detections,
+        const Detections &detections,
         std::vector<int>& track_indices,
         std::vector<int>& detection_indices)
     {
@@ -106,19 +119,22 @@ namespace linear_assignment {
             return res;
         }
 
-        CostMatrixType cost_matrix = distance_metric->detectionMetric(tracks, detections, track_indices, detection_indices);
+        //depends on the external usage
+        //CostMatrixType cost_matrix = distance_metric->iou_cost(tracks, detections, track_indices, detection_indices);
+
+        constexpr const float EPSILON = 1e-5;
+        CostMatrixType cost_matrix = (distance_metric->*(metric_function)) (tracks, detections, track_indices, detection_indices);
 
         for (int i = 0; i < cost_matrix.rows(); i++) {
             for (int j = 0; j < cost_matrix.cols(); j++) {
                 float tmp = cost_matrix(i, j);
-                if (tmp > max_distance) cost_matrix(i, j) = max_distance + 1e-5;
+                if (tmp > max_distance) {
+                    cost_matrix(i, j) = max_distance + EPSILON;
+                }
             }
         }
 
-        Eigen::Matrix<float, -1, 2, Eigen::RowMajor> indices = HungarianOper::Solve(cost_matrix);
-        //res.matches.clear();
-        //res.unmatched_tracks.clear();
-        //res.unmatched_detections.clear();
+        Eigen::Matrix<float, -1, 2, Eigen::RowMajor> indices = hungarian::solve(cost_matrix);
         for (size_t col = 0; col < detection_indices.size(); col++) {
             bool flag = false;
             for (int i = 0; i < indices.rows(); i++)
@@ -164,7 +180,8 @@ namespace linear_assignment {
         CostMatrixType &costMat,
         std::vector<Track>& tracks,
         //const DETECTIONS& detections,
-        const std::vector<DetectionResult> &detections,
+        //const std::vector<DetectionResult> &detections,
+        const Detections &detections,
         const std::vector<int>& track_indices,
         const std::vector<int>& detection_indices,
         float gated_cost,
@@ -172,7 +189,7 @@ namespace linear_assignment {
     {
         int gating_dim = (only_position ? 2 : 4);
         double gating_threshold = chi2inv95[gating_dim];
-        std::vector<DetectionResult> measurements;
+        std::vector<DetectionBox> measurements;
         for (int i : detection_indices) {
             //DETECTION_ROW t = detections[i];
             measurements.push_back(detections[i].to_xyah());

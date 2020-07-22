@@ -13,7 +13,7 @@ Track::Track(KalmanMeanMatType &mean, KalmanCovAMatType &covariance, int track_i
     , _max_age(max_age)
     , state(TrackState::Tentative)
 {
-    features = Features(1, 512);
+    features = Features(1, FEATURES_SIZE);
     features.row(0) = feature;
 }
 
@@ -23,7 +23,7 @@ void Track::predit(KalmanFilter &kf) {
     time_since_update += 1;
 }
 
-void Track::update(KalmanFilter & kf, const DetectionRow &detection) {
+void Track::update(KalmanFilter & kf, const Detection &detection) {
     auto pa = kf.update(mean, covariance, detection.to_xyah());
     mean = pa.mean;
     covariance = pa.covariance;
@@ -56,9 +56,16 @@ bool Track::is_tentative() const {
     return state == TrackState::Tentative;
 }
 
+DetectionBox Track::to_tlwh() const {
+    DetectionBox ret = mean.leftCols(4);
+    ret(2) *= ret(3);
+    ret.leftCols(2) -= (ret.rightCols(2) / 2);
+    return ret;
+}
+
 //INFO: might need to refactor
 void Track::featuresAppendOne(const Feature& feature) {
-    int size = features.rows();
+    auto size = features.rows();
     Features newfeatures = Features(size + 1, 512);
     newfeatures.block(0, 0, size, 512) = features;
     newfeatures.row(size) = feature;

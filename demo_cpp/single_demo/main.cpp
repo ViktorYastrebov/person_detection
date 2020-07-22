@@ -13,7 +13,10 @@
 
 //#include "tracker/deep_sort.h"
 
-#include "trackers_pool.h"
+//#include "trackers_pool.h"
+#include "deep_sort.h"
+#include "tracker.h"
+
 #include "utils.h"
 #include <filesystem>
 #include <fstream>
@@ -87,7 +90,7 @@ std::unique_ptr<BaseModel> builder(const std::string &name, const std::filesyste
 void process_single_image(const std::string &file, const std::string &name) {
     auto MODELS_BASE_DIR = std::filesystem::current_path() / "models";
     setBestCUDADevice();
-    auto model = builder(name, MODELS_BASE_DIR.string(), 0.3f, {0}, RUN_ON::GPU);
+    auto model = builder(name, MODELS_BASE_DIR, 0.3f, {0}, RUN_ON::GPU);
 
     // auto deep_sort_path = MODELS_BASE_DIR / "deep_sort_mars_128" / "deep_sort_10.onnx";
     // auto deep_sort_path = MODELS_BASE_DIR / "deep_sort_mars_128" / "deep_sort_modified.onnx";
@@ -108,6 +111,71 @@ void process_single_image(const std::string &file, const std::string &name) {
     }
 }
 
+void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
+    constexpr const float max_cosine_distance = 0.2;
+    constexpr const int max_badget = 100;
+
+    auto BASE_DIR = std::filesystem::current_path() / "models";
+    setBestCUDADevice();
+    auto model = builder(name, BASE_DIR.string(), confidence, {0}, RUN_ON::GPU);
+
+    if (model) {
+        auto deep_sort_path = BASE_DIR / "pytorch_deep_sort" / "deep_sort_32.onnx";
+        cv::Mat frame;
+        cv::VideoCapture stream(file);
+
+        Tracker tracker(max_cosine_distance, max_badget);
+        DeepSortModel featureExtractor(deep_sort_path.string());
+
+        cv::namedWindow("result", cv::WINDOW_AUTOSIZE);
+        {
+            while (stream.read(frame)) {
+                auto start = std::chrono::system_clock::now();
+                auto detections = model->process(frame);
+                auto end = std::chrono::system_clock::now();
+                auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                std::cout << "Detection time: " << int_ms.count() << " ms" << std::endl;
+
+                start = std::chrono::system_clock::now();
+                auto features = featureExtractor.getFeatures(frame, detections);
+                end = std::chrono::system_clock::now();
+                int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                std::cout << "Feature extraction time: " << int_ms.count() << " ms" << std::endl;
+
+                start = std::chrono::system_clock::now();
+                tracker.predict();
+                tracker.update(features);
+                end = std::chrono::system_clock::now();
+                int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                std::cout << "Track time: " << int_ms.count() << " ms" << std::endl;
+
+                for (const auto &track : tracker.getTracks()) {
+                    if (!track.is_confirmed() || track.time_since_update > 1) {
+                        continue;
+                    }
+                    auto bbox = track.to_tlwh();
+                    cv::Rect rect(
+                        static_cast<int>(bbox(0)),
+                        static_cast<int>(bbox(1)),
+                        static_cast<int>(bbox(2)),
+                        static_cast<int>(bbox(3))
+                    );
+                    cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2);
+                    std::string str_id = std::to_string(track.track_id);
+                    cv::putText(frame, str_id, cv::Point(rect.x, rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0,0,255), 2);
+                }
+                cv::imshow("result", frame);
+                int key = cv::waitKey(1);
+                if (key == 27) {
+                    break;
+                }
+            }
+        }
+        cv::destroyAllWindows();
+    }
+}
+
+#if 0
 void process_video_stream(const std::string &file, const std::string &name, const std::string &confidence) {
     auto BASE_DIR = std::filesystem::current_path() / "models";
 
@@ -224,12 +292,13 @@ void process_video_stream(const std::string &file, const std::string &name, cons
         cv::destroyAllWindows();
     }
 }
+#endif
 
 int main(int argc, char *argv[]) {
     ap::parser p(argc, argv);
     p.add("-n", "--name", "Model name: [YoloV3, YoloV4]", ap::mode::REQUIRED);
-    //p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
-    //p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
+    p.add("-f", "--file", "Path to video file", ap::mode::REQUIRED);
+    p.add("-c", "--confidience", "confidence threshold for detection model (range [0.0, 1.0], default = 0.3)", ap::mode::OPTIONAL);
 
     auto args = p.parse();
     if (!args.parsed_successfully()) {
@@ -237,10 +306,9 @@ int main(int argc, char *argv[]) {
         std::cout << std::setw(12) << " where -c is confidience threshold, range [0.0, 1.0]" << std::endl;
         return 0;
     }
-
-    std::string test_img = "d:/viktor_project/person_detection/test_img.png";
+    //std::string test_img = "d:/viktor_project/person_detection/test_img.png";
     //process_video_stream(args["-f"], args["-n"], args["-c"]);
-    process_single_image(test_img, args["-n"]);
-
+    //process_single_image(test_img, args["-n"]);
+    process_video_stream(args["-f"], args["-n"], args["-c"]);
     return 0;
 }

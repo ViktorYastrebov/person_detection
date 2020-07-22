@@ -18,12 +18,12 @@ public:
    };
 
    KalmanFilter();
-   MatResult initiate(const DetectionResult& measurement);
+   MatResult initiate(const DetectionBox& measurement);
 
     void predict(KalmanMeanMatType& mean, KalmanCovAMatType& covariance);
     HMatResult project(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance);
-    MatResult update(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const DetectionResult& measurement);
-    Eigen::Matrix<float, 1, -1> gating_distance(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const std::vector<DetectionResult>& measurements, bool only_position = false);
+    MatResult update(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const DetectionBox& measurement);
+    Eigen::Matrix<float, 1, -1> gating_distance(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance, const std::vector<DetectionBox>& measurements, bool only_position = false);
 
 private:
     Eigen::Matrix<float, 8, 8, Eigen::RowMajor> _motion_mat;

@@ -4,7 +4,14 @@
 #include <vector>
 
 
-Tracker::Tracker(float max_cosine_distance, int nn_budget, float max_iou_distance = 0.7, int max_age = 30, int n_init = 3)
+Tracker::Tracker(float max_cosine_distance, int nn_budget, float max_iou_distance, int max_age, int n_init)
+    :metric_processor(std::make_unique<NearNeighborDisMetric>(NearNeighborDisMetric::METRIC_TYPE::cosine, max_cosine_distance, nn_budget))
+    , max_iou_distance(max_iou_distance)
+    , max_age(max_age)
+    , n_init(n_init)
+    , _next_idx(1)
+    , kalman_filter(std::make_unique<KalmanFilter>())
+    , tracks()
 {}
 
 void Tracker::predict() {
@@ -13,13 +20,52 @@ void Tracker::predict() {
     }
 }
 
-void Tracker::update(const std::vector<DetectionResult>& detections)
-{}
+void Tracker::update(const Detections& detections)
+{
+    TrackerMatch res;
+    match(detections, res);
+
+    std::vector<MatchData>& matches = res.matches;
+    for (MatchData& data : matches) {
+        int track_idx = data.first;
+        int detection_idx = data.second;
+        tracks[track_idx].update(*kalman_filter, detections[detection_idx]);
+    }
+    std::vector<int>& unmatched_tracks = res.unmatched_tracks;
+    for (int& track_idx : unmatched_tracks) {
+        this->tracks[track_idx].mark_missed();
+    }
+    std::vector<int>& unmatched_detections = res.unmatched_detections;
+    for (int& detection_idx : unmatched_detections) {
+        initiate_track(detections[detection_idx]);
+    }
+    std::vector<Track>::iterator it = tracks.begin();
+    for (it; it != tracks.end();) {
+        if ((*it).is_deleted()) {
+            it = tracks.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    std::vector<int> active_targets;
+    std::vector<TrackerResult> tid_features;
+    for (Track& track : tracks) {
+        if (!track.is_confirmed()) {
+            continue;
+        }
+        active_targets.push_back(track.track_id);
+        tid_features.push_back(std::make_pair(track.track_id, track.features));
+        Features t = Features(0, FEATURES_SIZE);
+        track.features = t;
+    }
+    metric_processor->partial_fit(tid_features, active_targets);
+}
 
 
 CostMatrixType Tracker::gated_metric(
     std::vector<Track>& tracks,
-    const std::vector<DetectionResult>& dets,
+    const Detections& dets,
     const std::vector<int>& track_indices,
     const std::vector<int>& detection_indices
 )
@@ -35,13 +81,14 @@ CostMatrixType Tracker::gated_metric(
         targets.push_back(tracks[i].track_id);
     }
     CostMatrixType cost_matrix = metric_processor->distance(features, targets);
+
     CostMatrixType res = linear_assignment::gate_cost_matrix(kalman_filter.get(), cost_matrix, tracks, dets, track_indices, detection_indices);
     return res;
 }
 
 CostMatrixType Tracker::iou_cost(
     std::vector<Track>& tracks,
-    const std::vector<DetectionResult>& dets,
+    const Detections& dets,
     const std::vector<int>& track_indices,
     const std::vector<int>& detection_indices)
 {
@@ -78,7 +125,7 @@ CostMatrixType Tracker::iou_cost(
     return cost_matrix;
 }
 
-Eigen::VectorXf Tracker::iou(DetectionResult& bbox, DetectionBoxes &candidates)
+Eigen::VectorXf Tracker::iou(DetectionBox& bbox, DetectionBoxes &candidates)
 {
     float bbox_tl_1 = bbox[0];
     float bbox_tl_2 = bbox[1];
@@ -108,7 +155,7 @@ Eigen::VectorXf Tracker::iou(DetectionResult& bbox, DetectionBoxes &candidates)
     return res;
 }
 
-void Tracker::match(const const std::vector<DetectionResult>& detections, TrackerMatch& res) {
+void Tracker::match(const Detections& detections, TrackerMatch& res) {
     std::vector<int> confirmed_tracks;
     std::vector<int> unconfirmed_tracks;
     int idx = 0;
@@ -120,7 +167,7 @@ void Tracker::match(const const std::vector<DetectionResult>& detections, Tracke
 
     TrackerMatch matcha = linear_assignment::matching_cascade(
         this, 
-        //&tracker::gated_matric,
+        &Tracker::gated_metric,
         metric_processor->getMatingThreshold(),
         max_age,
         tracks,
@@ -141,16 +188,16 @@ void Tracker::match(const const std::vector<DetectionResult>& detections, Tracke
     }
     TrackerMatch matchb = linear_assignment::min_cost_matching(
         this,
-        //&tracker::iou_cost,
+        &Tracker::iou_cost,
         max_iou_distance,
         this->tracks,
         detections,
         iou_track_candidates,
         matcha.unmatched_detections);
-    //get result:
+    //INFO: get result
     res.matches.assign(matcha.matches.begin(), matcha.matches.end());
     res.matches.insert(res.matches.end(), matchb.matches.begin(), matchb.matches.end());
-    //unmatched_tracks;
+    //INFO: unmatched_tracks
     res.unmatched_tracks.assign(
         matcha.unmatched_tracks.begin(),
         matcha.unmatched_tracks.end());
@@ -163,11 +210,15 @@ void Tracker::match(const const std::vector<DetectionResult>& detections, Tracke
         matchb.unmatched_detections.end());
 }
 
-void Tracker::initiate_track(const Track::DetectionRow& detection) {
+void Tracker::initiate_track(const Detection& detection) {
     auto data = kalman_filter->initiate(detection.to_xyah());
     auto mean = data.mean;
     auto covariance = data.covariance;
 
     tracks.push_back(Track(mean, covariance, _next_idx, n_init, max_age, detection.feature));
     _next_idx += 1;
+}
+
+const std::vector<Track> &Tracker::getTracks() const {
+    return tracks;
 }
