@@ -26,6 +26,11 @@ namespace detection_engine {
 #pragma warning(push)
 #pragma warning(disable: 4251)
 
+
+    void ENGINE_DECL test_generate_grid(int x_dim, int y_dim);
+    void ENGINE_DECL test_normalize_xy(int channels, int x_dim, int y_dim);
+    void ENGINE_DECL test_normalize_wh(int channels, int x_dim, int y_dim);
+
     class ENGINE_DECL GenericDetector final {
     public:
 
@@ -51,8 +56,34 @@ namespace detection_engine {
         };
 
         InputInfo preprocessImage(const cv::Mat &imageRGB);
-        //DetectionResult
 
+
+        struct Grid {
+            using key_t = std::tuple<int, int>;
+            Grid(int x_size, int y_size);
+            ~Grid();
+            key_t key() const;
+            float *deviceMemory();
+        private:
+            int x_size_;
+            int y_size_;
+            float *generated_grid_;
+        };
+
+        struct DetectionNode {
+            void process(float *gpu_tensort, int number_anchors, int num_x, int num_y, int num_out, const float stride, const float achors[3][2]
+                //,cudaStream_t cudaStream
+            );
+            using GridMapType = std::map<Grid::key_t, std::shared_ptr<Grid>>;
+            GridMapType grids_;
+        };
+
+        const float strides[3] = { 8.0f, 16.0f, 32.0f };
+        const float yolov3_spp_anchors[3][3][2] = {
+            { {10.0f, 13.0f}, {16.0f, 30.0f}, {33.0f, 23.0f} },
+            { {30.0f, 61.0f}, {62.0f, 45.0f}, {59.0f, 119.0f} },
+            { {116.0f, 90.0f}, {156.0f,198.0f}, {373.0f, 326.0f} }
+        };
 
     private:
         std::string model_path_;

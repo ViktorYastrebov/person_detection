@@ -191,21 +191,63 @@ namespace detection_engine {
         if (!status) {
             return cv::Mat();
         }
+
+        //y.shape = torch.Size([1, 3, 80, 80, 85])
+        //y = x[i].sigmoid()
+        //y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + self.grid[i].to(x[i].device)) * self.stride[i]  # xy
+        //y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
+
+        DetectionNode detectionProcessor;
+        int n_outputs = network_->getNbOutputs();
+        for (int i = 0; i < n_outputs; ++i) {
+            auto outputTensor = network_->getOutput(i);
+            std::string out_name(outputTensor->getName());
+            float* output = static_cast<float*>(buffers_->getDeviceBuffer(out_name));
+            nvinfer1::Dims out_dims = outputTensor->getDimensions();
+            try {
+                detectionProcessor.process(output, out_dims.d[1], out_dims.d[2], out_dims.d[3], out_dims.d[4], strides[i], yolov3_spp_anchors[i]);
+            }
+            catch (const std::exception &ex) {
+                std::cout << "error : " << ex.what() << std::endl;
+            }
+        }
+        //INFO: not finished
+
         buffers_->copyOutputToHost();
         ///////////////////////////////////////////////
 
         cv::Mat result;
 
         //INFO: should be (3x80x80 + 3x40x40 + 3x20x20)
-        int n_outputs = network_->getNbOutputs();
+        n_outputs = network_->getNbOutputs();
         for (int i = 0; i < n_outputs; ++i) {
             auto outputTensor = network_->getOutput(i);
             std::string out_name(outputTensor->getName());
             float* output = static_cast<float*>(buffers_->getHostBuffer(out_name));
             nvinfer1::Dims out_dims = outputTensor->getDimensions();
             cv::Mat reshaped_out(out_dims.d[0] * out_dims.d[1] * out_dims.d[2] * out_dims.d[3], out_dims.d[4], CV_32FC1, output);
+
+            ////CPU generate grid:
+            //float *grid = new float[output_dims_.d[2] * output_dims_.d[3] * 2];
+            //for (int i = 0; i < output_dims_.d[2]; ++i) {
+            //    for (int j = 0; j < output_dims_.d[3]; ++j) {
+            //        grid[i * output_dims_.d[2] + j*2] = float(j);
+            //        grid[i * output_dims_.d[2] + j*2 + 1] = float(i);
+            //    }
+            //}
+            //std::cout << "[";
+            //for (int i = 0; i < output_dims_.d[2] * output_dims_.d[3]; ++i) {
+            //    std::cout << grid[i] << ", " << grid[i + 1] << std::endl;
+            //}
+            //delete[] grid;
             result.push_back(reshaped_out);
         }
+        auto r = result.row(0);
+        std::cout << r.colRange(0,3) << "..." <<  r.colRange(r.cols - 3, r.cols) << std::endl;
+        
+        r = result.row(1);
+        std::cout << r.colRange(0, 3) << "..." << r.colRange(r.cols - 3, r.cols) << std::endl;
+
         ///////////////////////////////////////////////
         // Now need to filter detection and apply anchors as far as I can see
         ///////////////////////////////////////////////
