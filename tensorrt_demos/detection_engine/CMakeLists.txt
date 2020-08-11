@@ -18,6 +18,8 @@ enable_language("CUDA")
 include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE} ${OpenCV_INCLUDE_DIRS} ${ROOT_DIR})
 link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib)
 
+message(STATUS "ROOT_DIR = ${ROOT_DIR}")
+
 set(SOURCE_FILES 
 	"decl_spec.h"
 	"generic_detector.h"
@@ -25,6 +27,10 @@ set(SOURCE_FILES
 	"Utils.h"
 	"yololayer.cu"
 	"yololayer.h"
+	"deep_sort.cpp"
+	"deep_sort.h"
+    "common.h"
+    "common.cpp"
 	)
 
 cuda_add_library(detection_engine SHARED ${SOURCE_FILES})

@@ -8,7 +8,7 @@
 
 #include <cuda_runtime_api.h>
 #include "common/logging.h"
-#include "common/common.h"
+#include "common.h"
 
 #include <opencv2/opencv.hpp>
 #include <filesystem>
@@ -20,8 +20,6 @@ namespace detection_engine {
 
     class ENGINE_DECL GenericDetector final {
     public:
-        template<class T>
-        using TensorRTuniquePtr = std::unique_ptr<T, common::InferDeleter>;
 
         //TODO: make model dependent see generate_models code !!!
         static const int MAX_OUTPUT_COUNT = 80 * 80 + 40 * 40 + 20 * 20;
@@ -44,19 +42,6 @@ namespace detection_engine {
         std::vector<cv::Rect> inference(const cv::Mat &imageRGB, const float confidence = 0.5, const float nms_threshold = 0.5);
 
     private:
-        struct DeviceBuffers {
-            enum BUFFER_TYPE: char {
-                INPUT = 0,
-                OUT = 1
-            };
-            DeviceBuffers(const int input_size, const int output_size);
-            ~DeviceBuffers();
-            void *getBuffer(const BUFFER_TYPE idx);
-            void **getAll();
-        private:
-            void* buffers[2];
-        };
-
         //INFO: temporary copy-past from adoption, might better use OpenCV NMS with AVX or even find implement GPU version
         struct Utils {
             static float iou(float lbox[4], float rbox[4]);
@@ -78,10 +63,10 @@ namespace detection_engine {
         std::vector<char> deserialized_buffer_;
         float input_host_buffer_[3 * INPUT_H * INPUT_W];
         float output_host_buffer[OUTPUT_SIZE];
-        TensorRTuniquePtr<nvinfer1::IRuntime> runtime_;
-        TensorRTuniquePtr<nvinfer1::ICudaEngine> engine_;
-        TensorRTuniquePtr<nvinfer1::IExecutionContext> context_;
-        std::unique_ptr<DeviceBuffers> device_buffers_;
+        common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
+        common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;
+        common::TensorRTUPtr<nvinfer1::IExecutionContext> context_;
+        std::unique_ptr<common::DeviceBuffers> device_buffers_;
         cudaStream_t stream_;
     };
 #pragma warning(pop)

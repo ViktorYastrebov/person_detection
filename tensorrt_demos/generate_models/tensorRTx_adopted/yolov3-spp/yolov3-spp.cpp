@@ -15,6 +15,8 @@
 #include "logging.h"
 #include "yololayer.h"
 
+#include "argparser.hpp"
+
 #define CHECK(status) \
     do\
     {\

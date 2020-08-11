@@ -63,24 +63,7 @@ namespace helper {
 }
 
 namespace detection_engine {
-
-    GenericDetector::DeviceBuffers::DeviceBuffers(const int input_size, const int output_size)
-    {
-        cudaMalloc(&buffers[0], input_size);
-        cudaMalloc(&buffers[1], output_size);
-    }
-    GenericDetector::DeviceBuffers::~DeviceBuffers() {
-        cudaFree(&buffers[0]);
-        cudaFree(&buffers[1]);
-    }
-
-    void *GenericDetector::DeviceBuffers::getBuffer(const BUFFER_TYPE idx) {
-        return buffers[idx];
-    }
-
-    void **GenericDetector::DeviceBuffers::getAll() {
-        return buffers;
-    }
+    using namespace common;
 
     float GenericDetector::Utils::iou(float lbox[4], float rbox[4]) {
         float interBox[] = {
@@ -142,15 +125,15 @@ namespace detection_engine {
         } else {
             throw std::runtime_error("Model path does not exists");
         }
-        runtime_ = TensorRTuniquePtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(gLogger_));
+        runtime_ = TensorRTUPtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(gLogger_));
         if (!runtime_) {
             throw std::runtime_error("Can't create IRuntime");
         }
-        engine_ = TensorRTuniquePtr<nvinfer1::ICudaEngine>(runtime_->deserializeCudaEngine(deserialized_buffer_.data(), deserialized_buffer_.size()));
+        engine_ = TensorRTUPtr<nvinfer1::ICudaEngine>(runtime_->deserializeCudaEngine(deserialized_buffer_.data(), deserialized_buffer_.size()));
         if (!engine_) {
             throw std::runtime_error("Can't create ICudaEngine");
         }
-        context_ = TensorRTuniquePtr<nvinfer1::IExecutionContext>(engine_->createExecutionContext());
+        context_ = TensorRTUPtr<nvinfer1::IExecutionContext>(engine_->createExecutionContext());
 
         const nvinfer1::ICudaEngine& engine = context_->getEngine();
         if (engine.getNbBindings() != 2) {
@@ -171,35 +154,7 @@ namespace detection_engine {
     std::vector<cv::Rect> GenericDetector::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
         cv::Mat prepared = preprocessImage(imageRGB);
         preapreBuffer(prepared);
-        //const nvinfer1::ICudaEngine& engine = context_->getEngine();
-
-        //void* buffers[2];
-
-        //// In order to bind the buffers, we need to know the names of the input and output tensors.
-        //// Note that indices are guaranteed to be less than IEngine::getNbBindings()
-        //const int inputIndex = engine.getBindingIndex(INPUT_BLOB_NAME);
-        //const int outputIndex = engine.getBindingIndex(OUTPUT_BLOB_NAME);
-
-        //// Create GPU buffers on device
-        //cudaMalloc(&buffers[inputIndex], batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float));
-        //cudaMalloc(&buffers[outputIndex], batch_size_ * OUTPUT_SIZE * sizeof(float));
-
-        //// Create stream
-        //cudaStream_t stream;
-        //cudaStreamCreate(&stream);
-
-        //// DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
-        //cudaMemcpyAsync(buffers[inputIndex], input_host_buffer_, batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream);
-        //context_->enqueue(batch_size_, buffers, stream, nullptr);
-        //cudaMemcpyAsync(output_host_buffer, buffers[outputIndex], batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream);
-        //cudaStreamSynchronize(stream);
-
-        //// Release stream and buffers
-        //cudaStreamDestroy(stream);
-        //cudaFree(buffers[inputIndex]);
-        //cudaFree(buffers[outputIndex]);
         cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(DeviceBuffers::INPUT), input_host_buffer_, batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
-
         context_->enqueue(batch_size_, device_buffers_->getAll(), stream_, nullptr);
         error = cudaMemcpyAsync(output_host_buffer, device_buffers_->getBuffer(DeviceBuffers::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
         error = cudaStreamSynchronize(stream_);
@@ -229,7 +184,7 @@ namespace detection_engine {
     }
 
     void GenericDetector::preapreBuffer(cv::Mat &prepared) {
-        //TODO: may be there is fastest way
+        //TODO: may be there is faster way
         for (int i = 0; i < INPUT_H * INPUT_W; i++) {
             input_host_buffer_[i] = prepared.at<cv::Vec3b>(i)[2] / 255.0f;
             input_host_buffer_[i + INPUT_H * INPUT_W] = prepared.at<cv::Vec3b>(i)[1] / 255.0f;
