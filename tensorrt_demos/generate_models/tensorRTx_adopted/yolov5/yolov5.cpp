@@ -10,11 +10,12 @@
 #define CONF_THRESH 0.5
 #define BATCH_SIZE 1
 
-#define NET m  // s m l x
-#define NETSTRUCT(str) createEngine_##str
-#define CREATENET(net) NETSTRUCT(net)
-#define STR1(x) #x
-#define STR2(x) STR1(x)
+//INFO: refactored
+//#define NET m  // s m l x
+//#define NETSTRUCT(str) createEngine_##str
+//#define CREATENET(net) NETSTRUCT(net)
+//#define STR1(x) #x
+//#define STR2(x) STR1(x)
 
 // stuff we know about the network and the input/output blobs
 static const int INPUT_H = Yolo::INPUT_H;
@@ -431,13 +432,28 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream) {
+bool APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream, const std::string name) {
     // Create builder
+
+    using createFuncT = std::function< ICudaEngine*(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt)>;
+    const std::map<std::string, createFuncT> builders_map = {
+        {"yolov5s", createEngine_s},
+        {"yolov5m", createEngine_m},
+        {"yolov5l", createEngine_l},
+        {"yolov5x", createEngine_x}
+    };
+    std::map<std::string, createFuncT>::const_iterator it = builders_map.find(name);
+    if (it == builders_map.cend()) {
+        std::cout << "Wrong builder name" << std::endl;
+        return false;
+    }
+
     IBuilder* builder = createInferBuilder(gLogger);
     IBuilderConfig* config = builder->createBuilderConfig();
 
     // Create model to populate the network, then set the outputs and create an engine
-    ICudaEngine* engine = (CREATENET(NET))(maxBatchSize, builder, config, DataType::kFLOAT);
+    //ICudaEngine* engine = (CREATENET(NET))(maxBatchSize, builder, config, DataType::kFLOAT);
+    ICudaEngine* engine = it->second(maxBatchSize, builder, config, DataType::kFLOAT);
     //ICudaEngine* engine = createEngine(maxBatchSize, builder, config, DataType::kFLOAT);
     assert(engine != nullptr);
 
@@ -447,6 +463,7 @@ void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream) {
     // Close everything down
     engine->destroy();
     builder->destroy();
+    return true;
 }
 
 void doInference(IExecutionContext& context, float* input, float* output, int batchSize) {
@@ -488,23 +505,26 @@ int main(int argc, char** argv) {
     char *trtModelStream{nullptr};
     size_t size{0};
 
-    //TODO: rebuild to map for runtime choose !!!
-
-    std::string engine_name = STR2(NET);
-    engine_name = "yolov5" + engine_name + ".engine";
-    if (argc == 2 && std::string(argv[1]) == "-s") {
+    //std::string engine_name = STR2(NET);
+    //engine_name = "yolov5" + engine_name + ".engine";
+    if (argc == 3 && std::string(argv[1]) == "-s") {
+        std::string model_name(argv[2]);
+        const std::string engine_name = model_name + ".engine";
         IHostMemory* modelStream{nullptr};
-        APIToModel(BATCH_SIZE, &modelStream);
-        assert(modelStream != nullptr);
-        std::ofstream p(engine_name, std::ios::binary);
-        if (!p) {
-            std::cerr << "could not open plan output file" << std::endl;
-            return -1;
+        if (APIToModel(BATCH_SIZE, &modelStream, model_name)) {
+            assert(modelStream != nullptr);
+            std::ofstream p(engine_name, std::ios::binary);
+            if (!p) {
+                std::cerr << "could not open plan output file" << std::endl;
+                return -1;
+            }
+            p.write(reinterpret_cast<const char*>(modelStream->data()), modelStream->size());
+            modelStream->destroy();
         }
-        p.write(reinterpret_cast<const char*>(modelStream->data()), modelStream->size());
-        modelStream->destroy();
         return 0;
-    } else if (argc == 3 && std::string(argv[1]) == "-d") {
+    } else if (argc == 4 && std::string(argv[1]) == "-d") {
+        std::string model_name(argv[2]);
+        const std::string engine_name = model_name + ".engine";
         std::ifstream file(engine_name, std::ios::binary);
         if (file.good()) {
             file.seekg(0, file.end);
@@ -517,8 +537,8 @@ int main(int argc, char** argv) {
         }
     } else {
         std::cerr << "arguments not right!" << std::endl;
-        std::cerr << "./yolov5 -s  // serialize model to plan file" << std::endl;
-        std::cerr << "./yolov5 -d ../samples  // deserialize plan file and run inference" << std::endl;
+        std::cerr << "./yolov5 -s \"model_name\" [yolov5s, yolov5m, yolov5l, yolov5x] // serialize model to plan file" << std::endl;
+        std::cerr << "./yolov5 -d \"model_name\" [yolov5s, yolov5m, yolov5l, yolov5x] ../samples  // deserialize plan file and run inference" << std::endl;
         return -1;
     }
 

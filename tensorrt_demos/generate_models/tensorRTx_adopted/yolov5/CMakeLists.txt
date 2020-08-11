@@ -4,6 +4,9 @@ project(yolov5)
 
 # add_definitions(-std=c++11)
 
+# USAGE EXAMPLE:
+# cmake -DCMAKE_BUILD_TYPE=Release -DOPENCV_MODULE_PATH="d:/viktor_project/installs/opencv_4.4/opencv_cuda_11_release" -DTENSOR_RT_BASE="d:/viktor_project/installs/TensorRT-7.1.3.4.Windows10.x86_64.cuda-11.0.cudnn8.0/TensorRT-7.1.3.4" -G"Visual Studio 15 2017 Win64" ..
+
 option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CMAKE_CXX_STANDARD 17)
 # set(CMAKE_BUILD_TYPE Debug)
