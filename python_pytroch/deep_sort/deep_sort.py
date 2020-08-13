@@ -8,7 +8,7 @@ from .tracker import Tracker
 
 
 class DeepSort(object):
-    def __init__(self, model_path):
+    def __init__(self, model_path, max_iou_distance=0.7, max_age=30):
         self.min_confidence = 0.3
         self.nms_max_overlap = 1.0
 
@@ -17,7 +17,7 @@ class DeepSort(object):
         max_cosine_distance = 0.2
         nn_budget = 100
         metric = NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
-        self.tracker = Tracker(metric)
+        self.tracker = Tracker(metric, max_iou_distance, max_age)
 
     def update(self, bbox_xywh, confidences, ori_img):
         self.height, self.width = ori_img.shape[:2]
@@ -50,7 +50,7 @@ class DeepSort(object):
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
             box = track.to_tlwh()
-            x1, y1, x2, y2 = self._xywh_to_xyxy_centernet(box)
+            x1, y1, x2, y2 = self._xywh_to_xyxy(box)
             track_id = track.track_id
             outputs.append(np.array([x1, y1, x2, y2, track_id], dtype=np.int))
         if len(outputs) > 0:

@@ -18,7 +18,7 @@ def draw_bboxes(img, bbox, identities=None, offset=(0, 0)):
         # box text and bar
         id = int(identities[i]) if identities is not None else 0
         color = (0, 0, 255)
-        label = '{} {}'.format("object", id)
+        label = '{} {}'.format("person", id)
         t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 2, 2)[0]
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 3)
         cv2.rectangle(img, (x1, y1), (x1 + t_size[0] + 3, y1 + t_size[1] + 4), color, -1)
@@ -53,7 +53,7 @@ def process_detections(file, name):
     video_stream.release()
 
 
-def process_detections_with_deep_sort(file, name):
+def process_detections_with_deep_sort(file, name, max_iou_distance=0.7, max_age=30):
     """
     INFO: here is the problem with the DeepSort. It's processing without batching
     """
@@ -63,7 +63,7 @@ def process_detections_with_deep_sort(file, name):
     model = YolosV5(path)
 
     deep_sort_path = base_dir / "models" / "deep_sort" / "ckpt.t7"
-    deep_sort = DeepSort(deep_sort_path)
+    deep_sort = DeepSort(deep_sort_path, max_iou_distance, max_age)
 
     def convert_bboxes_to_xywh(bbox):
         bbox[:, 2] = bbox[:, 2] - bbox[:, 0]  #
@@ -78,7 +78,7 @@ def process_detections_with_deep_sort(file, name):
         start = time.time()
 
         # INFO: bboxes must be in the following format: x0,y0,x1,y1
-        bboxs, confs = model.inference(frame)
+        bboxs, confs = model.inference(frame, [0])
         # bboxs, confs, out_frame = model.inference(frame)
         end = time.time()
         exec_time = end - start
@@ -115,6 +115,8 @@ if __name__ == '__main__':
     parser.add_argument('--file', help="Specify video file for processing")
     models = "[yolov3-spp.pt, yolov5s.py, yolov5m.py, yolov5l.pt, yolov5x.pt]"
     parser.add_argument('--name', default='yolov5m.pt', help=f'model names from set:{models}')
+    parser.add_argument('--iou', default=0.7, help='max iou distance')
+    parser.add_argument('--age', default=30, help='Maximum number of frames of misses before a track is deleted.')
     args = parser.parse_args()
     if args.file is not None and args.name is not None:
         # process_detections(args.file, args.name)

@@ -99,10 +99,14 @@ class Net(nn.Module):
 
 
 if __name__ == '__main__':
-    net = Net()
-    x = torch.randn(4, 3, 128, 64)
+    net = Net(reid=True)
+    x = torch.randn(32, 3, 128, 64)
+
+    model_path = "d:/viktor_project/person_detection/python_pytroch/models/deep_sort/ckpt.t7"
+    state_dict = torch.load(model_path)['net_dict']
+    net.load_state_dict(state_dict)
     y = net(x)
-    torch.onnx.export(net, x, "deep_sort.onnx")
+    torch.onnx.export(net, x, "deep_sort_32.onnx")
 
     # import ipdb
     # ipdb.set_trace()

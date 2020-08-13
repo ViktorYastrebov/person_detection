@@ -7,10 +7,13 @@ Usage:
 import argparse
 
 from models.common import *
-from utils import google_utils
+from models.utils import google_utils
 from pathlib import Path
 
 if __name__ == '__main__':
+    '''
+    Set working directory to the Path/models_api, it's pickle dependent issue
+    '''
 
     base_dir = Path("d:/viktor_project/yolo_python/yolo_v5/weights")
     models = ["yolov5m.pt", "yolov5l.pt", "yolov5x.pt", "yolov3-spp.pt"]

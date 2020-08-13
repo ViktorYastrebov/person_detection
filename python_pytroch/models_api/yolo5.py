@@ -168,7 +168,7 @@ class YolosV5:
         # _ = model(img.half() if half else img) if device.type != 'cpu' else None  # run once
         _ = self.model(img) if self.device.type != 'cpu' else None  # run once
 
-    def inference(self, frame):
+    def inference(self, frame, classes: list):
         img, ratio, d = self._convert_img(frame)
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
         img = np.ascontiguousarray(img)
@@ -179,7 +179,7 @@ class YolosV5:
             img = img.unsqueeze(0)
         # Inference
         predictions = self.model(img, augment=False)[0]
-        predictions = non_max_suppression(predictions, 0.4, 0.5)
+        predictions = non_max_suppression(predictions, 0.4, 0.5, classes=classes)
 
         bboxes = list()
         confs = list()
