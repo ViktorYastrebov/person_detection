@@ -26,7 +26,6 @@ public:
 
 
     //TODO: refactor do not use python style in C++
-    //DETECTBOX to_tlwh();
     common::datatypes::DetectionBox to_tlwh() const;
     int time_since_update;
     int track_id;

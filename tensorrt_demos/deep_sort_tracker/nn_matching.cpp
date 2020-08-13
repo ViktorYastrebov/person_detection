@@ -96,7 +96,7 @@ void NearNeighborDisMetric::partial_fit(std::vector<TrackerFeatures>& tid_feats,
                     } else {
                         samples[track_id].block(0, 0, budget_ - addSize, FEATURES_SIZE) =
                             samples[track_id].block(addSize - 1, 0, budget_ - addSize, FEATURES_SIZE).eval();
-                        samples[track_id].block(budget_ - addSize, 0, addSize, 128) = newFeatOne;
+                        samples[track_id].block(budget_ - addSize, 0, addSize, FEATURES_SIZE) = newFeatOne;
                     }
                 }
             }

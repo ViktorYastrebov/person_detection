@@ -7,10 +7,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
 
+set(_TBB_ROOT "d:/viktor_project/installs/tbb-2020.2-win")
+# set(_TBB_ROOT "f:/developer02/workspace/deps/tbb-2020.2-win")
+
+set(_TBB_INCLUDE_DIR ${_TBB_ROOT}/include)
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(BUILD_ARCH 64)
+	set(_TBB_LIB_DIR ${_TBB_ROOT}/lib/intel64/vc14)
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(BUILD_ARCH 32)
+	set(_TBB_LIB_DIR ${_TBB_ROOT}/lib/ia32/vc14)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
@@ -18,6 +25,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
 # INFO: might better to allow to set as cmake param
 set(TENSOR_RT_BASE "d:/viktor_project/installs/TensorRT-7.1.3.4.Windows10.x86_64.cuda-11.0.cudnn8.0/TensorRT-7.1.3.4")
 set(Eigen3_DIR "d:/viktor_project/installs/eigen-3.3.7_build/share/eigen3/cmake")
+set(Qt5_DIR "d:/viktor_project/installs/qt-5/5.15.0/msvc2019_64")
+# set(CMAKE_PREFIX_PATH ${Qt5_DIR})
+# set(Qt5_DIR "f:/developer02/workspace/deps/qt-5/5.15.0/msvc2019_64")
 
 set(TENSOR_RT_INCLUDE ${TENSOR_RT_BASE}/include)
 
@@ -38,6 +48,7 @@ set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(common)
 add_subdirectory(detection_engine)
 add_subdirectory(deep_sort_tracker)
+add_subdirectory(ui_demo)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 set(SOURCE_FILES "main.cpp")
