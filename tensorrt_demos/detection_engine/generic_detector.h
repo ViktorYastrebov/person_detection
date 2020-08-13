@@ -1,14 +1,12 @@
 #pragma once 
 
-
 #include "decl_spec.h"
 
 #include "NvInfer.h"
 #include "NvInferRuntime.h"
-
-#include <cuda_runtime_api.h>
 #include "common/logging.h"
-#include "common.h"
+#include "common/common.h"
+#include "common/datatypes.h"
 
 #include <opencv2/opencv.hpp>
 #include <filesystem>
@@ -39,7 +37,7 @@ namespace detection_engine {
 
         GenericDetector(const std::filesystem::path &model_path, const int BATCH_SIZE = 1);
         ~GenericDetector() = default;
-        std::vector<cv::Rect> inference(const cv::Mat &imageRGB, const float confidence = 0.5, const float nms_threshold = 0.5);
+        std::vector<common::datatypes::DetectionBox> inference(const cv::Mat &imageRGB, const float confidence = 0.5, const float nms_threshold = 0.5);
 
     private:
         //INFO: temporary copy-past from adoption, might better use OpenCV NMS with AVX or even find implement GPU version
@@ -51,7 +49,7 @@ namespace detection_engine {
 
         cv::Mat preprocessImage(const cv::Mat &imageRGB);
         void preapreBuffer(cv::Mat &prepared);
-        std::vector<cv::Rect> processResults(const cv::Mat &prepared, const float conf, const float nms_thresh);
+        std::vector<common::datatypes::DetectionBox> processResults(const cv::Mat &prepared, const float conf, const float nms_thresh);
 
     private:
 
@@ -61,11 +59,13 @@ namespace detection_engine {
         Logger gLogger_;
         int batch_size_;
         std::vector<char> deserialized_buffer_;
-        float input_host_buffer_[3 * INPUT_H * INPUT_W];
-        float output_host_buffer[OUTPUT_SIZE];
+        //TODO: use HostBuffer
+        //float input_host_buffer_[3 * INPUT_H * INPUT_W];
+        //float output_host_buffer[OUTPUT_SIZE];
         common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
         common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;
         common::TensorRTUPtr<nvinfer1::IExecutionContext> context_;
+        std::unique_ptr<common::HostBuffers> host_buffers_;
         std::unique_ptr<common::DeviceBuffers> device_buffers_;
         cudaStream_t stream_;
     };

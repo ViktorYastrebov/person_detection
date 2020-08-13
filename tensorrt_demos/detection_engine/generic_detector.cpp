@@ -1,5 +1,4 @@
 #include "generic_detector.h"
-#include "common/buffer_manager.h"
 #include <exception>
 #include <iostream>
 #include <fstream>
@@ -86,7 +85,8 @@ namespace detection_engine {
 
     void GenericDetector::Utils::nms(std::vector<Detection>& res, float *output, const float conf, const float nms_thresh) {
         std::map<float, std::vector<Detection>> m;
-        for (int i = 0; i < output[0] && i < 1000; i++) {
+        for(int i = 0; i < output[0] && i < MAX_OUTPUT_COUNT; ++i) {
+        //for (int i = 0; i < output[0] && i < 1000; i++) {
             if (output[1 + 7 * i + 4] <= conf) continue;
             Detection det;
             memcpy(&det, &output[1 + 7 * i], 7 * sizeof(float));
@@ -144,19 +144,23 @@ namespace detection_engine {
         if (inputIndex != 0 && outputIndex != 1) {
             throw std::runtime_error("Input/Output buffers ids are different");
         }
-        device_buffers_ = std::make_unique<DeviceBuffers>(batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), batch_size_ * OUTPUT_SIZE * sizeof(float));
+        const int INPUT_BUFFER_SIZE = batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float);
+        const int OUTPUT_BUFFER_SIZE = batch_size_ * OUTPUT_SIZE * sizeof(float);
+
+        host_buffers_ = std::make_unique<HostBuffers>(INPUT_BUFFER_SIZE, OUTPUT_BUFFER_SIZE);
+        device_buffers_ = std::make_unique<DeviceBuffers>(INPUT_BUFFER_SIZE, OUTPUT_BUFFER_SIZE);
         cudaError_t error = cudaStreamCreate(&stream_);
         if (error != cudaSuccess) {
             throw std::runtime_error("Can't create CUDA stream");
         }
     }
 
-    std::vector<cv::Rect> GenericDetector::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
+    std::vector<common::datatypes::DetectionBox> GenericDetector::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
         cv::Mat prepared = preprocessImage(imageRGB);
         preapreBuffer(prepared);
-        cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(DeviceBuffers::INPUT), input_host_buffer_, batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
+        cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(BUFFER_TYPE::INPUT), host_buffers_->getBuffer(BUFFER_TYPE::INPUT), batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
         context_->enqueue(batch_size_, device_buffers_->getAll(), stream_, nullptr);
-        error = cudaMemcpyAsync(output_host_buffer, device_buffers_->getBuffer(DeviceBuffers::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
+        error = cudaMemcpyAsync(host_buffers_->getBuffer(BUFFER_TYPE::OUT), device_buffers_->getBuffer(BUFFER_TYPE::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
         error = cudaStreamSynchronize(stream_);
         return processResults(imageRGB, confidence, nms_threshold);
     }
@@ -185,6 +189,7 @@ namespace detection_engine {
 
     void GenericDetector::preapreBuffer(cv::Mat &prepared) {
         //TODO: may be there is faster way
+        float * input_host_buffer_ = (float*)host_buffers_->getBuffer(BUFFER_TYPE::INPUT);
         for (int i = 0; i < INPUT_H * INPUT_W; i++) {
             input_host_buffer_[i] = prepared.at<cv::Vec3b>(i)[2] / 255.0f;
             input_host_buffer_[i + INPUT_H * INPUT_W] = prepared.at<cv::Vec3b>(i)[1] / 255.0f;
@@ -192,8 +197,9 @@ namespace detection_engine {
         }
     }
 
-    std::vector<cv::Rect> GenericDetector::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
+    std::vector<common::datatypes::DetectionBox> GenericDetector::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
         std::vector<Detection> res;
+        float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
         Utils::nms(res, output_host_buffer, conf, nms_thresh);
 
         float r_w = INPUT_W / (prepared.cols * 1.0);
@@ -201,7 +207,7 @@ namespace detection_engine {
         const int rows = prepared.rows;
         const int cols = prepared.cols;
 
-        std::vector<cv::Rect> outputs;
+        std::vector<common::datatypes::DetectionBox> outputs;
 
         if (r_h > r_w) {
             for (const auto &det : res) {
@@ -213,7 +219,7 @@ namespace detection_engine {
                 r = r / r_w;
                 t = t / r_w;
                 b = b / r_w;
-                outputs.push_back(cv::Rect(l, t, r - l, b - t));
+                outputs.push_back(common::datatypes::DetectionBox(l, t, r - l, b - t));
             }
         } else {
             for (const auto &det : res) {
@@ -225,7 +231,7 @@ namespace detection_engine {
                 r = r / r_h;
                 t = t / r_h;
                 b = b / r_h;
-                outputs.push_back(cv::Rect(l, t, r - l, b - t));
+                outputs.push_back(common::datatypes::DetectionBox(l, t, r - l, b - t));
             }
         }
         return outputs;

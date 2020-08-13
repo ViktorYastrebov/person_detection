@@ -15,7 +15,10 @@ endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
 
+# INFO: might better to allow to set as cmake param
 set(TENSOR_RT_BASE "d:/viktor_project/installs/TensorRT-7.1.3.4.Windows10.x86_64.cuda-11.0.cudnn8.0/TensorRT-7.1.3.4")
+set(Eigen3_DIR "d:/viktor_project/installs/eigen-3.3.7_build/share/eigen3/cmake")
+
 set(TENSOR_RT_INCLUDE ${TENSOR_RT_BASE}/include)
 
 # INFO: set directory to the base of built OpenCV
@@ -32,12 +35,14 @@ endif()
 
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_subdirectory(common)
 add_subdirectory(detection_engine)
+add_subdirectory(deep_sort_tracker)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${DETECTION_ENGINE_INCLUDE})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 set(SOURCE_FILES "main.cpp")
 link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib)
 
 
 add_executable(tensort_demo ${SOURCE_FILES})
-target_link_libraries(tensort_demo detection_engine)
+target_link_libraries(tensort_demo detection_engine deep_sort_tracker)

@@ -11,7 +11,8 @@
 
 #include <cuda_runtime_api.h>
 #include "common/logging.h"
-#include "common.h"
+#include "common/common.h"
+#include "common/datatypes.h"
 
 
 namespace deep_sort_tracker {
@@ -24,8 +25,8 @@ namespace deep_sort_tracker {
         static constexpr const int MAX_BATCH_SIZE = 32;
 
         DeepSort(const std::filesystem::path &model_path, const int BATCH_SIZE = MAX_BATCH_SIZE);
-        ~DeepSort();
-        cv::Mat getFeatures(const cv::Mat &imageRGB, const std::vector<cv::Rect> &bboxes);
+        ~DeepSort() = default;
+        common::datatypes::Detections getFeatures(const cv::Mat &imageRGB, const std::vector<common::datatypes::DetectionBox> &bboxes);
 
         static constexpr const int INPUT_W = 64;
         static constexpr const int INPUT_H = 128;
@@ -36,11 +37,12 @@ namespace deep_sort_tracker {
         Logger gLogger_;
         int batch_size_;
         std::vector<char> deserialized_buffer_;
-        float *input_host_buffer_;
-        float *output_host_buffer_;
+        //float *input_host_buffer_;
+        //float *output_host_buffer_;
         common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
         common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;
         common::TensorRTUPtr<nvinfer1::IExecutionContext> context_;
+        std::unique_ptr<common::HostBuffers> host_buffers_;
         std::unique_ptr<common::DeviceBuffers> device_buffers_;
         cudaStream_t stream_;
     };

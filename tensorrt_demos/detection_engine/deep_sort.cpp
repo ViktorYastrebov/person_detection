@@ -40,73 +40,77 @@ namespace deep_sort_tracker {
         if (inputIndex != 0 && outputIndex != 1) {
             throw std::runtime_error("Input/Output buffers ids are different");
         }
-
-        cudaError_t error = cudaHostAlloc((void**)&input_host_buffer_, batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaHostAllocPortable);
-        error = cudaHostAlloc((void**)&output_host_buffer_, batch_size_ * OUTPUT_SIZE * sizeof(float), cudaHostAllocPortable);
-        //input_host_buffer_ = new float[batch_size_ * 3 * INPUT_H * INPUT_W];
-        //output_host_buffer_ = new float[batch_size_ * 3 * INPUT_H * INPUT_W];
-
-        device_buffers_ = std::make_unique<DeviceBuffers>(batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), batch_size_ * OUTPUT_SIZE * sizeof(float));
-        error = cudaStreamCreate(&stream_);
+        const int INPUT_BUFFER_SIZE = batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float);
+        const int OUTPUT_BUFFER_SIZE = batch_size_ * OUTPUT_SIZE * sizeof(float);
+        host_buffers_ = std::make_unique<common::HostBuffers>(INPUT_BUFFER_SIZE, OUTPUT_BUFFER_SIZE);
+        device_buffers_ = std::make_unique<DeviceBuffers>(INPUT_BUFFER_SIZE, OUTPUT_BUFFER_SIZE);
+        cudaError_t error = cudaStreamCreate(&stream_);
         if (error != cudaSuccess) {
             throw std::runtime_error("Can't create CUDA stream");
         }
     }
 
-    DeepSort::~DeepSort()
-    {
-        cudaFree(input_host_buffer_);
-        cudaFree(output_host_buffer_);
-    }
-
-    cv::Mat DeepSort::getFeatures(const cv::Mat &imageRGB, const std::vector<cv::Rect> &bboxes) {
-        cv::Mat total;
+    common::datatypes::Detections DeepSort::getFeatures(const cv::Mat &imageRGB, const std::vector<common::datatypes::DetectionBox> &bboxes) {
         int bbox_size = static_cast<int>(bboxes.size());
+
+        common::datatypes::Detections result;
 
         int iters = bbox_size / batch_size_;
         for (int i = 0; i < iters; ++i) {
             std::vector<cv::Mat> prepared;
             for (int j = i * batch_size_; j < i * batch_size_ + batch_size_; ++j) {
-                cv::Mat roi = imageRGB(bboxes[i]);
+                //INFO: check could work as is
+                cv::Rect rect_roi(bboxes[j](0), bboxes[j](1), bboxes[j](2), bboxes[j](3));
+                cv::Mat roi = imageRGB(rect_roi);
                 cv::resize(roi, roi, cv::Size(INPUT_W, INPUT_H));
                 prepared.push_back(roi);
             }
             preapreBuffer(prepared);
 
-            cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(DeviceBuffers::INPUT), input_host_buffer_, batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
+            cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(BUFFER_TYPE::INPUT), host_buffers_->getBuffer(BUFFER_TYPE::INPUT), batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
             context_->enqueue(batch_size_, device_buffers_->getAll(), stream_, nullptr);
-            error = cudaMemcpyAsync(output_host_buffer_, device_buffers_->getBuffer(DeviceBuffers::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
+            error = cudaMemcpyAsync(host_buffers_->getBuffer(BUFFER_TYPE::OUT), device_buffers_->getBuffer(BUFFER_TYPE::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
             error = cudaStreamSynchronize(stream_);
-            cv::Mat result(cv::Size(OUTPUT_SIZE, batch_size_), CV_32FC1, output_host_buffer_);
-            total.push_back(result);
+
+            float *ptr = static_cast<float*>(host_buffers_->getBuffer(BUFFER_TYPE::OUT));
+            for (int j = 0; j < batch_size_; ++j) {
+                common::datatypes::Feature feature(&ptr[j*OUTPUT_SIZE]);
+                result.push_back({ bboxes[i*batch_size_ + j],  feature });
+            }
         }
 
         int rest = bbox_size % batch_size_;
         std::vector<cv::Mat> prepared;
         for (int i = iters * batch_size_; i < iters * batch_size_ + rest; ++i) {
-            cv::Mat roi = imageRGB(bboxes[i]);
+            //INFO: check could work as is
+            cv::Rect rect_roi(bboxes[i](0), bboxes[i](1), bboxes[i](2), bboxes[i](3));
+            cv::Mat roi = imageRGB(rect_roi);
             cv::resize(roi, roi, cv::Size(INPUT_W, INPUT_H));
             prepared.push_back(roi);
         }
         preapreBuffer(prepared);
-        cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(DeviceBuffers::INPUT), input_host_buffer_, batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
+        cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(BUFFER_TYPE::INPUT), host_buffers_->getBuffer(BUFFER_TYPE::INPUT), batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
         context_->enqueue(batch_size_, device_buffers_->getAll(), stream_, nullptr);
-        error = cudaMemcpyAsync(output_host_buffer_, device_buffers_->getBuffer(DeviceBuffers::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
+        error = cudaMemcpyAsync(host_buffers_->getBuffer(BUFFER_TYPE::OUT), device_buffers_->getBuffer(BUFFER_TYPE::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
         error = cudaStreamSynchronize(stream_);
         //TODO: USE Eigen here!
 
-        //cv::Mat result(cv::Size(OUTPUT_SIZE, bbox_size), CV_32FC1, output_host_buffer_);
-        //total.push_back(result);
-        return total;
+        float *ptr = static_cast<float*>(host_buffers_->getBuffer(BUFFER_TYPE::OUT));
+        for (int i = 0; i < rest; ++i) {
+            common::datatypes::Feature feature(&ptr[i*OUTPUT_SIZE]);
+            result.push_back({ bboxes[iters*batch_size_ + i],  feature });
+        }
+        return result;
     }
 
     void DeepSort::preapreBuffer(const std::vector<cv::Mat> &crops) {
         int offset = 0;
+        float * input_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::INPUT);
         for (const auto &crop : crops) {
             for (int i = 0; i < INPUT_H * INPUT_W; i++) {
-                input_host_buffer_[offset + i] = crop.at<cv::Vec3b>(i)[2] / 255.0f;
-                input_host_buffer_[offset + i + INPUT_H * INPUT_W] = crop.at<cv::Vec3b>(i)[1] / 255.0f;
-                input_host_buffer_[offset + i + 2 * INPUT_H * INPUT_W] = crop.at<cv::Vec3b>(i)[0] / 255.0f;
+                input_host_buffer[offset + i] = crop.at<cv::Vec3b>(i)[2] / 255.0f;
+                input_host_buffer[offset + i + INPUT_H * INPUT_W] = crop.at<cv::Vec3b>(i)[1] / 255.0f;
+                input_host_buffer[offset + i + 2 * INPUT_H * INPUT_W] = crop.at<cv::Vec3b>(i)[0] / 255.0f;
             }
             offset += INPUT_H * INPUT_W;
         }
