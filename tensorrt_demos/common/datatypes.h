@@ -29,9 +29,16 @@ namespace common {
         using TrackerResult = std::pair<int, Features>;
         using DetectionBox = Eigen::Matrix<float, 1, 4, Eigen::RowMajor>;
 
+        struct COMMON_EXPORT DetectionResult {
+            DetectionBox bbox;
+            int class_id;
+        };
+        using DetectionResults = std::vector<DetectionResult>;
+
         struct COMMON_EXPORT Detection {
             DetectionBox tlwh;
             Feature feature;
+            int class_id;
             //TODO: check the usage. May be need to do it for whole matrix
             DetectionBox to_xyah() const;
             DetectionBox to_tlbr() const;

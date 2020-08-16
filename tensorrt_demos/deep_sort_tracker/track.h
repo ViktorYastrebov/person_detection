@@ -13,7 +13,9 @@ public:
         Deleted
     };
 
-    Track(common::datatypes::KalmanMeanMatType &mean, common::datatypes::KalmanCovAMatType &covariance, int track_id, int n_init, int max_age, const common::datatypes::Feature &feature);
+    Track(common::datatypes::KalmanMeanMatType &mean, common::datatypes::KalmanCovAMatType &covariance,
+        int track_id, int n_init, int max_age, const common::datatypes::Feature &feature,
+        const int class_id);
     ~Track() = default;
 
     void predit(KalmanFilter &kf);
@@ -29,6 +31,7 @@ public:
     common::datatypes::DetectionBox to_tlwh() const;
     int time_since_update;
     int track_id;
+    int class_id;
     common::datatypes::Features features;
     common::datatypes::KalmanMeanMatType mean;
     common::datatypes::KalmanCovAMatType covariance;

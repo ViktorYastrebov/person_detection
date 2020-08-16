@@ -22,6 +22,7 @@ void DisplayFrame::putInput(DisplayFrame::InputData &&data) {
 
 void DisplayFrame::Stop() {
     stop_ = true;
+    last_frame_ = QImage();
 }
 
 void DisplayFrame::displayTracks(QPaintEvent *p) {
@@ -44,23 +45,45 @@ void DisplayFrame::displayTracks(QPaintEvent *p) {
             auto new_height = static_cast<int>(img_size.height *scale);
 
             for (auto &track : data.tracks_data) {
-                track.bbox *= scale;
+                track.bbox = track.bbox * scale;
             }
 
             cv::Mat scaled;
             cv::resize(data.frame, scaled, cv::Size(new_width, new_height));
             QImage img = QImage((uchar*)scaled.data, scaled.cols, scaled.rows, scaled.step, QImage::Format_RGB888);
 
-            QPixmap pixmapImage = QPixmap::fromImage(img);
+            //QPixmap pixmapImage = QPixmap::fromImage(img);
 
             //draw everything on image
             {
-                QPainter imagePainter(&pixmapImage);
-                auto pen = QPen(QColor(0, 0, 255, 128));
+                QPainter imagePainter(&img);
+                auto color = QColor(0, 0, 255, 128);
+                auto pen = QPen(color);
                 pen.setWidth(2);
-                imagePainter.setPen(pen);
+
+                const auto &f = font();
+                QFontMetrics metrics(f);
+                int font_height = metrics.height();
+
+                auto text_color = QColor(255, 255, 255);
+                QPen text_pen = QPen(text_color);
+
+                constexpr const int RECT_HEIGHT = 20;
                 for (const auto &track : data.tracks_data) {
-                    imagePainter.drawRect(track.bbox(0), track.bbox(1), track.bbox(2), track.bbox(3));
+
+                    int x = static_cast<int>(track.bbox(0));
+                    int y = static_cast<int>(track.bbox(1));
+                    int w = static_cast<int>(track.bbox(2));
+                    int h = static_cast<int>(track.bbox(3));
+                    imagePainter.setPen(pen);
+                    imagePainter.drawRect(x, y, w, h);
+                    if (y - 2*font_height > 0) {
+                        QRect tile_rect(x, y - 2*font_height, w, font_height*2);
+                        imagePainter.fillRect(tile_rect, color);
+                        std::string tile = "ID : " + std::to_string(track.track_id) + "\nClass ID :" + std::to_string(track.class_id);
+                        imagePainter.setPen(text_pen);
+                        imagePainter.drawText(tile_rect, QString::fromStdString(tile));
+                    }
                 }
             }
 
@@ -74,18 +97,27 @@ void DisplayFrame::displayTracks(QPaintEvent *p) {
             rect.setY(rect.y() + h_diff);
             rect.setHeight(rect.height() - h_diff);
 
-            auto result_image = pixmapImage.toImage();
-            painter.drawImage(rect, result_image);
-            last_frame_ = pixmapImage;
+            painter.drawImage(rect, img);
+            last_frame_ = img.copy();
             QFrame::paintEvent(p);
             QFrame::update();
         } else {
-            if (!last_frame_.isNull()) {
+            if (!last_frame_.isNull() && !stop_) {
+                QPainter painter(this);
+                QSize image_size = last_frame_.size();
+
                 QSize s = size();
                 QRect rect = QRect(0, 0, s.width(), s.height());
-                QPainter painter(this);
-                auto result_image = last_frame_.toImage();
-                painter.drawImage(rect, result_image);
+
+                auto w_diff = (rect.width() - image_size.width()) / 2;
+                rect.setX(rect.x() + w_diff);
+                rect.setWidth(rect.width() - w_diff);
+
+                auto h_diff = (rect.height() - image_size.height()) / 2;
+                rect.setY(rect.y() + h_diff);
+                rect.setHeight(rect.height() - h_diff);
+
+                painter.drawImage(rect, last_frame_);
                 QFrame::paintEvent(p);
                 QFrame::update();
             } else {

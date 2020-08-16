@@ -26,7 +26,7 @@ namespace deep_sort_tracker {
 
         DeepSort(const std::filesystem::path &model_path, const int BATCH_SIZE = MAX_BATCH_SIZE);
         ~DeepSort() = default;
-        common::datatypes::Detections getFeatures(const cv::Mat &imageRGB, const std::vector<common::datatypes::DetectionBox> &bboxes);
+        common::datatypes::Detections getFeatures(const cv::Mat &imageRGB, const common::datatypes::DetectionResults &bboxes);
 
         static constexpr const int INPUT_W = 64;
         static constexpr const int INPUT_H = 128;

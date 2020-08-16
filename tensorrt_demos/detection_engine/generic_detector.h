@@ -37,7 +37,7 @@ namespace detection_engine {
 
         GenericDetector(const std::filesystem::path &model_path, const int BATCH_SIZE = 1);
         ~GenericDetector() = default;
-        std::vector<common::datatypes::DetectionBox> inference(const cv::Mat &imageRGB, const float confidence = 0.5, const float nms_threshold = 0.5);
+        common::datatypes::DetectionResults inference(const cv::Mat &imageRGB, const float confidence = 0.5, const float nms_threshold = 0.5);
 
     private:
         //INFO: temporary copy-past from adoption, might better use OpenCV NMS with AVX or even find implement GPU version
@@ -48,8 +48,8 @@ namespace detection_engine {
         };
 
         cv::Mat preprocessImage(const cv::Mat &imageRGB);
-        void preapreBuffer(cv::Mat &prepared);
-        std::vector<common::datatypes::DetectionBox> processResults(const cv::Mat &prepared, const float conf, const float nms_thresh);
+        void prepareBuffer(cv::Mat &prepared);
+        common::datatypes::DetectionResults processResults(const cv::Mat &prepared, const float conf, const float nms_thresh);
 
     private:
 

@@ -6,6 +6,8 @@
 #include "detection_engine/deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
 
+#include <fstream>
+
 MainWindow::MainWindow(const std::filesystem::path &detector_path, const std::filesystem::path &deep_sort_path)
     :QMainWindow()
     , detector_path_(detector_path)
@@ -31,6 +33,7 @@ void MainWindow::Process(const std::filesystem::path &video_file) {
 }
 
 void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
+    std::ofstream trace("trace.txt");
     try {
         auto detector = std::make_unique<detection_engine::GenericDetector>(detector_path_);
         auto feature_extractor = std::make_unique< deep_sort_tracker::DeepSort>(deep_sort_path_);
@@ -42,9 +45,9 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
         cv::Mat frame;
 
         while (video_stream.read(frame)) {
-            auto rects = detector->inference(frame, 0.3f, 0.5f);
+            auto detections = detector->inference(frame, 0.3f, 0.5f);
 
-            auto features = feature_extractor->getFeatures(frame, rects);
+            auto features = feature_extractor->getFeatures(frame, detections);
             tracker.predict();
             tracker.update(features);
 
@@ -58,7 +61,7 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
                     continue;
                 }
                 auto bbox = track.to_tlwh();
-                data.tracks_data.push_back({ bbox, track.track_id });
+                data.tracks_data.push_back({ bbox, track.track_id, track.class_id });
             }
             display_frame_.putInput(std::move(data));
 
@@ -67,8 +70,12 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
                 break;
             }
         }
-    } catch (const std::string &)
-    {}
+    } catch (const std::exception &ex) {
+        trace << "Exception occurs : " << ex.what() << std::endl;
+    }
+    catch (...) {
+        trace << "Something terrible has happened" << std::endl;
+    }
 }
 
 

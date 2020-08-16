@@ -21,6 +21,7 @@ public:
     struct Entry {
         common::datatypes::DetectionBox bbox;
         int track_id;
+        int class_id;
     };
 
     struct InputData {
@@ -39,5 +40,6 @@ private:
     std::atomic_bool stop_;
     std::array<int, 3> color_;
     //cv::Mat last_;
-    QPixmap last_frame_;
+    //QPixmap last_frame_;
+    QImage last_frame_;
 };

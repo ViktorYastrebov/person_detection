@@ -23,9 +23,9 @@ int main(int argc, char *argv[]) {
         cv::Mat frame;
         while (video_stream.read(frame)) {
             auto start = std::chrono::system_clock::now();
-            auto rects = detector->inference(frame, 0.3f, 0.5f);
+            auto detections = detector->inference(frame, 0.3f, 0.5f);
             
-            auto features = deep_sort->getFeatures(frame, rects);
+            auto features = deep_sort->getFeatures(frame, detections);
             tracker.predict();
             tracker.update(features);
 

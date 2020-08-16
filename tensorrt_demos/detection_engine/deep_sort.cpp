@@ -50,17 +50,27 @@ namespace deep_sort_tracker {
         }
     }
 
-    common::datatypes::Detections DeepSort::getFeatures(const cv::Mat &imageRGB, const std::vector<common::datatypes::DetectionBox> &bboxes) {
+    common::datatypes::Detections DeepSort::getFeatures(const cv::Mat &imageRGB, const common::datatypes::DetectionResults &bboxes) {
         int bbox_size = static_cast<int>(bboxes.size());
 
         common::datatypes::Detections result;
+
+        auto frame_size = imageRGB.size();
 
         int iters = bbox_size / batch_size_;
         for (int i = 0; i < iters; ++i) {
             std::vector<cv::Mat> prepared;
             for (int j = i * batch_size_; j < i * batch_size_ + batch_size_; ++j) {
-                //INFO: check could work as is
-                cv::Rect rect_roi(bboxes[j](0), bboxes[j](1), bboxes[j](2), bboxes[j](3));
+                cv::Rect rect_roi(bboxes[j].bbox(0), bboxes[j].bbox(1), bboxes[j].bbox(2), bboxes[j].bbox(3));
+                rect_roi.x = std::max(rect_roi.x, 0);
+                rect_roi.y = std::max(rect_roi.y, 0);
+
+                if ((rect_roi.x + rect_roi.width) >= frame_size.width) {
+                    rect_roi.width = frame_size.width - 1 - rect_roi.x;
+                }
+                if ((rect_roi.y + rect_roi.height) >= frame_size.height) {
+                    rect_roi.height = frame_size.height - 1 - rect_roi.y;
+                }
                 cv::Mat roi = imageRGB(rect_roi);
                 cv::resize(roi, roi, cv::Size(INPUT_W, INPUT_H));
                 prepared.push_back(roi);
@@ -75,15 +85,23 @@ namespace deep_sort_tracker {
             float *ptr = static_cast<float*>(host_buffers_->getBuffer(BUFFER_TYPE::OUT));
             for (int j = 0; j < batch_size_; ++j) {
                 common::datatypes::Feature feature(&ptr[j*OUTPUT_SIZE]);
-                result.push_back({ bboxes[i*batch_size_ + j],  feature });
+                result.push_back({ bboxes[i*batch_size_ + j].bbox,  feature, bboxes[i*batch_size_ + j].class_id });
             }
         }
-
         int rest = bbox_size % batch_size_;
         std::vector<cv::Mat> prepared;
         for (int i = iters * batch_size_; i < iters * batch_size_ + rest; ++i) {
             //INFO: check could work as is
-            cv::Rect rect_roi(bboxes[i](0), bboxes[i](1), bboxes[i](2), bboxes[i](3));
+            cv::Rect rect_roi(bboxes[i].bbox(0), bboxes[i].bbox(1), bboxes[i].bbox(2), bboxes[i].bbox(3));
+            rect_roi.x = std::max(rect_roi.x, 0);
+            rect_roi.y = std::max(rect_roi.y, 0);
+
+            if ((rect_roi.x + rect_roi.width) >= frame_size.width) {
+                rect_roi.width = frame_size.width - 1 - rect_roi.x;
+            }
+            if ((rect_roi.y + rect_roi.height) >= frame_size.height) {
+                rect_roi.height = frame_size.height - 1 - rect_roi.y;
+            }
             cv::Mat roi = imageRGB(rect_roi);
             cv::resize(roi, roi, cv::Size(INPUT_W, INPUT_H));
             prepared.push_back(roi);
@@ -98,7 +116,7 @@ namespace deep_sort_tracker {
         float *ptr = static_cast<float*>(host_buffers_->getBuffer(BUFFER_TYPE::OUT));
         for (int i = 0; i < rest; ++i) {
             common::datatypes::Feature feature(&ptr[i*OUTPUT_SIZE]);
-            result.push_back({ bboxes[iters*batch_size_ + i],  feature });
+            result.push_back({ bboxes[iters*batch_size_ + i].bbox,  feature, bboxes[iters*batch_size_ + i].class_id });
         }
         return result;
     }

@@ -217,7 +217,7 @@ void Tracker::initiate_track(const Detection& detection) {
     auto mean = data.mean;
     auto covariance = data.covariance;
 
-    tracks.push_back(Track(mean, covariance, _next_idx, n_init, max_age, detection.feature));
+    tracks.push_back(Track(mean, covariance, _next_idx, n_init, max_age, detection.feature, detection.class_id));
     _next_idx += 1;
 }
 

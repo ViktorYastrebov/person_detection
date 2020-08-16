@@ -155,9 +155,9 @@ namespace detection_engine {
         }
     }
 
-    std::vector<common::datatypes::DetectionBox> GenericDetector::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
+    common::datatypes::DetectionResults GenericDetector::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
         cv::Mat prepared = preprocessImage(imageRGB);
-        preapreBuffer(prepared);
+        prepareBuffer(prepared);
         cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(BUFFER_TYPE::INPUT), host_buffers_->getBuffer(BUFFER_TYPE::INPUT), batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
         context_->enqueue(batch_size_, device_buffers_->getAll(), stream_, nullptr);
         error = cudaMemcpyAsync(host_buffers_->getBuffer(BUFFER_TYPE::OUT), device_buffers_->getBuffer(BUFFER_TYPE::OUT), batch_size_ * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream_);
@@ -187,7 +187,7 @@ namespace detection_engine {
         return out;
     }
 
-    void GenericDetector::preapreBuffer(cv::Mat &prepared) {
+    void GenericDetector::prepareBuffer(cv::Mat &prepared) {
         //TODO: may be there is faster way
         float * input_host_buffer_ = (float*)host_buffers_->getBuffer(BUFFER_TYPE::INPUT);
         for (int i = 0; i < INPUT_H * INPUT_W; i++) {
@@ -197,7 +197,7 @@ namespace detection_engine {
         }
     }
 
-    std::vector<common::datatypes::DetectionBox> GenericDetector::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
+    common::datatypes::DetectionResults GenericDetector::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
         std::vector<Detection> res;
         float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
         Utils::nms(res, output_host_buffer, conf, nms_thresh);
@@ -207,7 +207,7 @@ namespace detection_engine {
         const int rows = prepared.rows;
         const int cols = prepared.cols;
 
-        std::vector<common::datatypes::DetectionBox> outputs;
+        common::datatypes::DetectionResults outputs;
 
         if (r_h > r_w) {
             for (const auto &det : res) {
@@ -219,7 +219,7 @@ namespace detection_engine {
                 r = r / r_w;
                 t = t / r_w;
                 b = b / r_w;
-                outputs.push_back(common::datatypes::DetectionBox(l, t, r - l, b - t));
+                outputs.push_back({ common::datatypes::DetectionBox(l, t, r - l, b - t), static_cast<int>(det.class_id) });
             }
         } else {
             for (const auto &det : res) {
@@ -231,7 +231,7 @@ namespace detection_engine {
                 r = r / r_h;
                 t = t / r_h;
                 b = b / r_h;
-                outputs.push_back(common::datatypes::DetectionBox(l, t, r - l, b - t));
+                outputs.push_back({ common::datatypes::DetectionBox(l, t, r - l, b - t), static_cast<int>(det.class_id) });
             }
         }
         return outputs;

@@ -2,9 +2,10 @@
 
 using namespace common::datatypes;
 
-Track::Track(KalmanMeanMatType &mean, KalmanCovAMatType &covariance, int track_id, int n_init, int max_age, const Feature &feature)
+Track::Track(KalmanMeanMatType &mean, KalmanCovAMatType &covariance, int track_id, int n_init, int max_age, const Feature &feature, const int class_id)
     :time_since_update(0)
     , track_id(track_id)
+    , class_id(class_id)
     , features()
     , mean(mean)
     , covariance(covariance)
