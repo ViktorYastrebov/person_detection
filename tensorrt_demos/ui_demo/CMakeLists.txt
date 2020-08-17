@@ -11,8 +11,11 @@ set(SOURCE_FILES
 		"main.cpp"
    )
 
+find_package(CUDA 10.0 REQUIRED)
+set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+
 include_directories(${_TBB_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib ${_TBB_LIB_DIR})
+link_directories(${TENSOR_RT_BASE}/lib ${_TBB_LIB_DIR})
 
 add_executable(ui_demo WIN32 ${SOURCE_FILES})
 

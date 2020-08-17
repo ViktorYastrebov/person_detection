@@ -12,7 +12,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/output")
 
-find_package(CUDA 11.0 REQUIRED)
+# find_package(CUDA 11.0 REQUIRED)
+find_package(CUDA 10.0 REQUIRED)
 
 set(CUDA_NVCC_PLAGS ${CUDA_NVCC_PLAGS};-std=c++11;-g;-G;-gencode;arch=compute_30;code=sm_30)
 
