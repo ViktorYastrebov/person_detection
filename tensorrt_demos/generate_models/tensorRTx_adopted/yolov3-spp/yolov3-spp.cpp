@@ -27,7 +27,6 @@
     } while (0)
 
 
-//#define USE_FP16  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
 #define NMS_THRESH 0.4
 #define BBOX_CONF_THRESH 0.5
@@ -225,14 +224,14 @@ ILayer* convBnLeaky(INetworkDefinition *network, std::map<std::string, Weights>&
 }
 
 // Creat the engine using only the API and not any parser.
-ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
+ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, const std::string &weights_path, bool use_float16) {
     INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
     ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{3, INPUT_H, INPUT_W});
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov3-spp_ultralytics68.wts");
+    std::map<std::string, Weights> weightMap = loadWeights(weights_path);
     Weights emptywts{DataType::kFLOAT, nullptr, 0};
 
     // Yeah I am stupid, I just want to expand the complete arch of darknet..
@@ -386,9 +385,9 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
     // Build engine
     builder->setMaxBatchSize(maxBatchSize);
     config->setMaxWorkspaceSize(16 * (1 << 20));  // 16MB
-#ifdef USE_FP16
-    config->setFlag(BuilderFlag::kFP16);
-#endif
+    if (use_float16) {
+        config->setFlag(BuilderFlag::kFP16);
+    }
     std::cout << "Building engine, please wait for a while..." << std::endl;
     ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
@@ -405,13 +404,13 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
     return engine;
 }
 
-void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream) {
+void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream, const std::string &weights_path, bool use_float16 = true) {
     // Create builder
     IBuilder* builder = createInferBuilder(gLogger);
     IBuilderConfig* config = builder->createBuilderConfig();
 
     // Create model to populate the network, then set the outputs and create an engine
-    ICudaEngine* engine = createEngine(maxBatchSize, builder, config, DataType::kFLOAT);
+    ICudaEngine* engine = createEngine(maxBatchSize, builder, config, DataType::kFLOAT, weights_path, use_float16);
     assert(engine != nullptr);
 
     // Serialize the engine
@@ -496,9 +495,17 @@ int main(int argc, char** argv) {
     char *trtModelStream{nullptr};
     size_t size{0};
 
-    if (argc == 2 && std::string(argv[1]) == "-s") {
+    if (argc > 1 && std::string(argv[1]) == "-s") {
+        bool use_float16 = true;
+        std::string weights_path;
+        if (argc == 4 && std::string(argv[2]) == "no-f16") {
+            use_float16 = false;
+            weights_path = std::string(argv[3]);
+        } else {
+            weights_path = std::string(argv[2]);
+        }
         IHostMemory* modelStream{nullptr};
-        APIToModel(1, &modelStream);
+        APIToModel(1, &modelStream, weights_path, use_float16);
         assert(modelStream != nullptr);
         std::ofstream p("yolov3-spp.engine", std::ios::binary);
         if (!p) {

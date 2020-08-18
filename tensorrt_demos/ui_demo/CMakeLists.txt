@@ -11,7 +11,7 @@ set(SOURCE_FILES
 		"main.cpp"
    )
 
-find_package(CUDA 10.0 REQUIRED)
+find_package(CUDA ${_CUDA_VERSION} REQUIRED)
 set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
 include_directories(${_TBB_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})

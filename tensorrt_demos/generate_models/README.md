@@ -26,10 +26,10 @@ All models are pretrained and can be downloaded from the
        `cd yolov3`<br>
        `//copy yolov3-spp.pt or yolov3.pt to yolov3 folder`<br>
        `cp ../tensorRTx_adopted/yolov3-spp/gen_wts.py . //copy from tensorRTx_adopted/yolov3-spp/gen_wts.py to yolov3 folder` <br>
-       `cp ../pytorch_models/yolov3-spp-ultralytics.pt`
-       `python gen_wts.py yolov3-spp-ultralytics.pt //It should generate yolov3-spp_ultralytics68.wts file`
+       `cp ../pytorch_models/yolov3-spp-ultralytics.pt`<br>
+       `python gen_wts.py yolov3-spp-ultralytics.pt //It should generate yolov3-spp_ultralytics68.wts file`<br>
        `// the master branch of yolov3 should work, if not, you can checkout cf7a4d31d37788023a9186a1a143a2dab0275ead`<br>
-       `cp yolov3-spp_ultralytics68.wts ../tensorRTx_adopted/yolov3-spp/ //copy yolov3-spp_ultralytics68.wts file to yolov3-spp folder`
+       `cp yolov3-spp_ultralytics68.wts ../tensorRTx_adopted/yolov3-spp/ //copy yolov3-spp_ultralytics68.wts file to yolov3-spp folder`<br>
 	* YoloV5:<br>
 	   `git clone https://github.com/ultralytics/yolov5.git`<br>
 	   `cd yolov5`

@@ -11,29 +11,6 @@ namespace {
 
 
 namespace helper {
-    std::string type2str(int type) {
-        std::string r;
-
-        uchar depth = type & CV_MAT_DEPTH_MASK;
-        uchar chans = 1 + (type >> CV_CN_SHIFT);
-
-        switch (depth) {
-        case CV_8U:  r = "8U"; break;
-        case CV_8S:  r = "8S"; break;
-        case CV_16U: r = "16U"; break;
-        case CV_16S: r = "16S"; break;
-        case CV_32S: r = "32S"; break;
-        case CV_32F: r = "32F"; break;
-        case CV_64F: r = "64F"; break;
-        default:     r = "User"; break;
-        }
-
-        r += "C";
-        r += (chans + '0');
-
-        return r;
-    }
-
     //void enableDLA(nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig* config, int useDLACore, bool allowGPUFallback = true) {
     //    if (useDLACore >= 0)
     //    {
@@ -86,11 +63,19 @@ namespace detection_engine {
     void GenericDetector::Utils::nms(std::vector<Detection>& res, float *output, const float conf, const float nms_thresh) {
         std::map<float, std::vector<Detection>> m;
         for(int i = 0; i < output[0] && i < MAX_OUTPUT_COUNT; ++i) {
-        //for (int i = 0; i < output[0] && i < 1000; i++) {
-            if (output[1 + 7 * i + 4] <= conf) continue;
+            if (output[1 + 7 * i + 4] <= conf) {
+                continue;
+            }
+            //INFO: add correct filtering
+            int class_id = static_cast<int>(output[2 + 7 * i + 4]);
+            if (class_id != 0) {
+                continue;
+            }
             Detection det;
             memcpy(&det, &output[1 + 7 * i], 7 * sizeof(float));
-            if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<Detection>());
+            if (m.count(det.class_id) == 0) {
+                m.emplace(det.class_id, std::vector<Detection>());
+            }
             m[det.class_id].push_back(det);
         }
         for (auto it = m.begin(); it != m.end(); it++) {

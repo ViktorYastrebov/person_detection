@@ -20,15 +20,15 @@ namespace detection_engine {
     public:
 
         //TODO: make model dependent see generate_models code !!!
-        static const int MAX_OUTPUT_COUNT = 80 * 80 + 40 * 40 + 20 * 20;
+        static const int MAX_OUTPUT_COUNT = 1000;
         static const int INPUT_H = 608;
         static const int INPUT_W = 608;
         static const int OUTPUT_SIZE = MAX_OUTPUT_COUNT * 7 + 1;  // we assume the yololayer outputs no more than 1000 boxes that conf >= 0.1
 
-        // static constexpr int LOCATIONS = 4;
+        static constexpr int LOCATIONS = 4;
         struct alignas(float) Detection {
             //x y w h
-            float bbox[4];
+            float bbox[LOCATIONS];
             float det_confidence;
             float class_id;
             float class_confidence;
@@ -40,7 +40,7 @@ namespace detection_engine {
         common::datatypes::DetectionResults inference(const cv::Mat &imageRGB, const float confidence = 0.5, const float nms_threshold = 0.5);
 
     private:
-        //INFO: temporary copy-past from adoption, might better use OpenCV NMS with AVX or even find implement GPU version
+        //INFO: temporary copy-past from adoption, might better use OpenCV NMS with AVX or even find implemention on GPU
         struct Utils {
             static float iou(float lbox[4], float rbox[4]);
             static bool cmp(Detection& a, Detection& b);
@@ -59,9 +59,6 @@ namespace detection_engine {
         Logger gLogger_;
         int batch_size_;
         std::vector<char> deserialized_buffer_;
-        //TODO: use HostBuffer
-        //float input_host_buffer_[3 * INPUT_H * INPUT_W];
-        //float output_host_buffer[OUTPUT_SIZE];
         common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
         common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;
         common::TensorRTUPtr<nvinfer1::IExecutionContext> context_;
