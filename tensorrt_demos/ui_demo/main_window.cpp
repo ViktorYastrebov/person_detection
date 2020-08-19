@@ -2,7 +2,8 @@
 #include <QKeyEvent>
 #include "main_window.h"
 
-#include "detection_engine/generic_detector.h"
+//#include "detection_engine/generic_detector.h"
+#include "detection_engine/yolov3_model.h"
 #include "detection_engine/deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
 
@@ -35,7 +36,7 @@ void MainWindow::Process(const std::filesystem::path &video_file) {
 void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
     std::ofstream trace("trace.txt");
     try {
-        auto detector = std::make_unique<detection_engine::GenericDetector>(detector_path_);
+        auto detector = std::make_unique<detector::YoloV3SPPModel>(detector_path_);
         auto feature_extractor = std::make_unique< deep_sort_tracker::DeepSort>(deep_sort_path_);
         auto video_stream = cv::VideoCapture(file_path.string());
 

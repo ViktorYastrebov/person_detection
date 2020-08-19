@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(common)
 
-# find_package(CUDA 11.0 REQUIRED)
-# find_package(CUDA 10.0 REQUIRED)
-# enable_language("CUDA")
+add_subdirectory(yolov3spp)
+add_subdirectory(yolov5)
 
-include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE} ${OpenCV_INCLUDE_DIRS} ${ROOT_DIR})
+include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE} ${ROOT_DIR})
 
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(CUDA ${_CUDA_VERSION} REQUIRED)

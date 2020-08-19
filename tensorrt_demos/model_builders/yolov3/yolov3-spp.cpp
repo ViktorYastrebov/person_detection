@@ -12,8 +12,8 @@
 #endif
 #include "NvInfer.h"
 #include "cuda_runtime_api.h"
-#include "logging.h"
-#include "yololayer.h"
+#include "common/logging.h"
+#include "common/yolov3spp/yolov3_spp_layer.h"
 
 #define CHECK(status) \
     do\
@@ -34,13 +34,15 @@
 using namespace nvinfer1;
 
 // stuff we know about the network and the input/output blobs
-static const int INPUT_H = Yolo::INPUT_H;
-static const int INPUT_W = Yolo::INPUT_W;
-static const int OUTPUT_SIZE = 1000 * 7 + 1;  // we assume the yololayer outputs no more than 1000 boxes that conf >= 0.1
-const char* INPUT_BLOB_NAME = "data";
-const char* OUTPUT_BLOB_NAME = "prob";
+static const int INPUT_H = YoloV3SPP::INPUT_H;
+static const int INPUT_W = YoloV3SPP::INPUT_W;
+//static const int OUTPUT_SIZE = YoloV3SPP::MAX_OUTPUT_BBOX_COUNT * 7 + 1;  // we assume the yololayer outputs no more than 1000 boxes that conf >= 0.1
+static const int OUTPUT_SIZE = YoloV3SPP::OUTPUT_SIZE;
+const char* INPUT_BLOB_NAME = YoloV3SPP::INPUT_BLOB_NAME;
+const char* OUTPUT_BLOB_NAME = YoloV3SPP::OUTPUT_BLOB_NAME;
 static Logger gLogger;
-REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
+
+REGISTER_TENSORRT_PLUGIN(YoloV3SPPPluginCreator);
 
 cv::Mat preprocess_img(cv::Mat& img) {
     int w, h, x, y;
@@ -105,17 +107,17 @@ float iou(float lbox[4], float rbox[4]) {
     return interBoxS/(lbox[2]*lbox[3] + rbox[2]*rbox[3] -interBoxS);
 }
 
-bool cmp(Yolo::Detection& a, Yolo::Detection& b) {
+bool cmp(YoloV3SPP::Detection& a, YoloV3SPP::Detection& b) {
     return a.det_confidence > b.det_confidence;
 }
 
-void nms(std::vector<Yolo::Detection>& res, float *output, float nms_thresh = NMS_THRESH) {
-    std::map<float, std::vector<Yolo::Detection>> m;
+void nms(std::vector<YoloV3SPP::Detection>& res, float *output, float nms_thresh = NMS_THRESH) {
+    std::map<float, std::vector<YoloV3SPP::Detection>> m;
     for (int i = 0; i < output[0] && i < 1000; i++) {
         if (output[1 + 7 * i + 4] <= BBOX_CONF_THRESH) continue;
-        Yolo::Detection det;
+        YoloV3SPP::Detection det;
         memcpy(&det, &output[1 + 7 * i], 7 * sizeof(float));
-        if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<Yolo::Detection>());
+        if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<YoloV3SPP::Detection>());
         m[det.class_id].push_back(det);
     }
     for (auto it = m.begin(); it != m.end(); it++) {
@@ -137,7 +139,7 @@ void nms(std::vector<Yolo::Detection>& res, float *output, float nms_thresh = NM
 
 // TensorRT weight files have a simple space delimited format:
 // [type] [size] <data x size in hex>
-std::map<std::string, Weights> loadWeights(const std::string file) {
+std::map<std::string, Weights> loadWeights(const std::string &file) {
     std::cout << "Loading weights: " << file << std::endl;
     std::map<std::string, Weights> weightMap;
 
@@ -331,7 +333,7 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
     auto lr85 = convBnLeaky(network, weightMap, *lr84->getOutput(0), 1024, 3, 1, 1, 85);
     auto lr86 = convBnLeaky(network, weightMap, *lr85->getOutput(0), 512, 1, 1, 0, 86);
     auto lr87 = convBnLeaky(network, weightMap, *lr86->getOutput(0), 1024, 3, 1, 1, 87);
-    IConvolutionLayer* conv88 = network->addConvolutionNd(*lr87->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["module_list.88.Conv2d.weight"], weightMap["module_list.88.Conv2d.bias"]);
+    IConvolutionLayer* conv88 = network->addConvolutionNd(*lr87->getOutput(0), 3 * (YoloV3SPP::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["module_list.88.Conv2d.weight"], weightMap["module_list.88.Conv2d.bias"]);
     assert(conv88);
     auto lr91 = convBnLeaky(network, weightMap, *lr86->getOutput(0), 256, 1, 1, 0, 91);
 
@@ -354,7 +356,7 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
     auto lr97 = convBnLeaky(network, weightMap, *lr96->getOutput(0), 512, 3, 1, 1, 97);
     auto lr98 = convBnLeaky(network, weightMap, *lr97->getOutput(0), 256, 1, 1, 0, 98);
     auto lr99 = convBnLeaky(network, weightMap, *lr98->getOutput(0), 512, 3, 1, 1, 99);
-    IConvolutionLayer* conv100 = network->addConvolutionNd(*lr99->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["module_list.100.Conv2d.weight"], weightMap["module_list.100.Conv2d.bias"]);
+    IConvolutionLayer* conv100 = network->addConvolutionNd(*lr99->getOutput(0), 3 * (YoloV3SPP::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["module_list.100.Conv2d.weight"], weightMap["module_list.100.Conv2d.bias"]);
     assert(conv100);
     auto lr103 = convBnLeaky(network, weightMap, *lr98->getOutput(0), 128, 1, 1, 0, 103);
     Weights deconvwts104{DataType::kFLOAT, deval, 128 * 2 * 2};
@@ -370,12 +372,12 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
     auto lr109 = convBnLeaky(network, weightMap, *lr108->getOutput(0), 256, 3, 1, 1, 109);
     auto lr110 = convBnLeaky(network, weightMap, *lr109->getOutput(0), 128, 1, 1, 0, 110);
     auto lr111 = convBnLeaky(network, weightMap, *lr110->getOutput(0), 256, 3, 1, 1, 111);
-    IConvolutionLayer* conv112 = network->addConvolutionNd(*lr111->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["module_list.112.Conv2d.weight"], weightMap["module_list.112.Conv2d.bias"]);
+    IConvolutionLayer* conv112 = network->addConvolutionNd(*lr111->getOutput(0), 3 * (YoloV3SPP::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["module_list.112.Conv2d.weight"], weightMap["module_list.112.Conv2d.bias"]);
     assert(conv112);
 
-    auto creator = getPluginRegistry()->getPluginCreator("YoloLayer_TRT", "1");
+    auto creator = getPluginRegistry()->getPluginCreator("YoloV3SPPLayer_TRT", "1");
     const PluginFieldCollection* pluginData = creator->getFieldNames();
-    IPluginV2 *pluginObj = creator->createPlugin("yololayer", pluginData);
+    IPluginV2 *pluginObj = creator->createPlugin("yolov3_spp_layer", pluginData);
     ITensor* inputTensors_yolo[] = {conv88->getOutput(0), conv100->getOutput(0), conv112->getOutput(0)};
     auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
 
@@ -570,7 +572,7 @@ int main(int argc, char** argv) {
         doInference(*context, data, prob, 1);
         auto end = std::chrono::system_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-        std::vector<Yolo::Detection> res;
+        std::vector<YoloV3SPP::Detection> res;
         nms(res, prob);
         for (int i=0; i<20; i++) {
             std::cout << prob[i] << ",";

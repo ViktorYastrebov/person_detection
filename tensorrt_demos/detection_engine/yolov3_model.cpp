@@ -1,109 +1,84 @@
-#include "generic_detector.h"
-#include <exception>
-#include <iostream>
+#include "yolov3_model.h"
+#include "common/yolov3spp/yolov3_spp_layer.h"
+#include "cuda_runtime_api.h"
+#include <opencv2/imgproc/imgproc.hpp>
 #include <fstream>
-#include "yololayer.h"
+#include <map>
 
 namespace {
     using namespace nvinfer1;
-    REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
+    REGISTER_TENSORRT_PLUGIN(YoloV3SPPPluginCreator);
 }
 
+namespace detector {
+    //INFO: it's type dependent/memory structure so for now just make the copy-paste for YoloV3 & YoloV5( See the Detection type )
+    namespace yolov3_utils {
+        float iou(float lbox[4], float rbox[4]) {
+            float interBox[] = {
+                std::max(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f), //left
+                std::min(lbox[0] + lbox[2] / 2.f , rbox[0] + rbox[2] / 2.f), //right
+                std::max(lbox[1] - lbox[3] / 2.f , rbox[1] - rbox[3] / 2.f), //top
+                std::min(lbox[1] + lbox[3] / 2.f , rbox[1] + rbox[3] / 2.f), //bottom
+            };
 
-namespace helper {
-    //void enableDLA(nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig* config, int useDLACore, bool allowGPUFallback = true) {
-    //    if (useDLACore >= 0)
-    //    {
-    //        if (builder->getNbDLACores() == 0)
-    //        {
-    //            std::cerr << "Trying to use DLA core " << useDLACore << " on a platform that doesn't have any DLA cores"
-    //                << std::endl;
-    //            assert("Error: use DLA core on a platfrom that doesn't have any DLA cores" && false);
-    //        }
-    //        if (allowGPUFallback)
-    //        {
-    //            config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
-    //        }
-    //        if (!builder->getInt8Mode() && !config->getFlag(nvinfer1::BuilderFlag::kINT8))
-    //        {
-    //            // User has not requested INT8 Mode.
-    //            // By default run in FP16 mode. FP32 mode is not permitted.
-    //            builder->setFp16Mode(true);
-    //            config->setFlag(nvinfer1::BuilderFlag::kFP16);
-    //        }
-    //        config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-    //        config->setDLACore(useDLACore);
-    //        config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
-    //    }
-    //}
-}
+            if (interBox[2] > interBox[3] || interBox[0] > interBox[1])
+                return 0.0f;
 
-namespace detection_engine {
-    using namespace common;
-
-    float GenericDetector::Utils::iou(float lbox[4], float rbox[4]) {
-        float interBox[] = {
-            std::max(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f), //left
-            std::min(lbox[0] + lbox[2] / 2.f , rbox[0] + rbox[2] / 2.f), //right
-            std::max(lbox[1] - lbox[3] / 2.f , rbox[1] - rbox[3] / 2.f), //top
-            std::min(lbox[1] + lbox[3] / 2.f , rbox[1] + rbox[3] / 2.f), //bottom
-        };
-
-        if (interBox[2] > interBox[3] || interBox[0] > interBox[1])
-            return 0.0f;
-
-        float interBoxS = (interBox[1] - interBox[0])*(interBox[3] - interBox[2]);
-        return interBoxS / (lbox[2] * lbox[3] + rbox[2] * rbox[3] - interBoxS);
-    }
-
-    bool GenericDetector::Utils::cmp(Detection& a, Detection& b) {
-        return a.det_confidence > b.det_confidence;
-    }
-
-    void GenericDetector::Utils::nms(std::vector<Detection>& res, float *output, const float conf, const float nms_thresh) {
-        std::map<float, std::vector<Detection>> m;
-        for(int i = 0; i < output[0] && i < MAX_OUTPUT_COUNT; ++i) {
-            if (output[1 + 7 * i + 4] <= conf) {
-                continue;
-            }
-            //INFO: add correct filtering
-            int class_id = static_cast<int>(output[2 + 7 * i + 4]);
-            if (class_id != 0) {
-                continue;
-            }
-            Detection det;
-            memcpy(&det, &output[1 + 7 * i], 7 * sizeof(float));
-            if (m.count(det.class_id) == 0) {
-                m.emplace(det.class_id, std::vector<Detection>());
-            }
-            m[det.class_id].push_back(det);
+            float interBoxS = (interBox[1] - interBox[0])*(interBox[3] - interBox[2]);
+            return interBoxS / (lbox[2] * lbox[3] + rbox[2] * rbox[3] - interBoxS);
         }
-        for (auto it = m.begin(); it != m.end(); it++) {
-            //std::cout << it->second[0].class_id << " --- " << std::endl;
-            auto& dets = it->second;
-            std::sort(dets.begin(), dets.end(), cmp);
-            for (size_t m = 0; m < dets.size(); ++m) {
-                auto& item = dets[m];
-                res.push_back(item);
-                for (size_t n = m + 1; n < dets.size(); ++n) {
-                    if (iou(item.bbox, dets[n].bbox) > nms_thresh) {
-                        dets.erase(dets.begin() + n);
-                        --n;
+
+        bool cmp(YoloV3SPP::Detection& a, YoloV3SPP::Detection& b) {
+            return a.det_confidence > b.det_confidence;
+        }
+
+        void nms(std::vector<YoloV3SPP::Detection>& res, float *output, const float conf, const float nms_thresh) {
+            std::map<float, std::vector<YoloV3SPP::Detection>> m;
+            for (int i = 0; i < output[0] && i < YoloV3SPP::MAX_OUTPUT_BBOX_COUNT; ++i) {
+                if (output[1 + 7 * i + 4] <= conf) {
+                    continue;
+                }
+                //INFO: add correct filtering
+                int class_id = static_cast<int>(output[2 + 7 * i + 4]);
+                if (class_id != 0) {
+                    continue;
+                }
+                YoloV3SPP::Detection det;
+                memcpy(&det, &output[1 + 7 * i], 7 * sizeof(float));
+                if (m.count(det.class_id) == 0) {
+                    m.emplace(det.class_id, std::vector<YoloV3SPP::Detection>());
+                }
+                m[det.class_id].push_back(det);
+            }
+            for (auto it = m.begin(); it != m.end(); it++) {
+                //std::cout << it->second[0].class_id << " --- " << std::endl;
+                auto& dets = it->second;
+                std::sort(dets.begin(), dets.end(), cmp);
+                for (size_t m = 0; m < dets.size(); ++m) {
+                    auto& item = dets[m];
+                    res.push_back(item);
+                    for (size_t n = m + 1; n < dets.size(); ++n) {
+                        if (iou(item.bbox, dets[n].bbox) > nms_thresh) {
+                            dets.erase(dets.begin() + n);
+                            --n;
+                        }
                     }
                 }
             }
         }
     }
 
+    using namespace common;
+    using namespace YoloV3SPP;
 
-
-    GenericDetector::GenericDetector(const std::filesystem::path &model_path, const int BATCH_SIZE)
-        :gLogger_()
-        , batch_size_(BATCH_SIZE)
+    YoloV3SPPModel::YoloV3SPPModel(const std::filesystem::path &model_path, const int BATCH_SIZE)
+        :CommonDetector()
     {
+        batch_size_ = BATCH_SIZE;
+
         std::ifstream ifs(model_path.string().c_str(), std::ios_base::binary);
         if (ifs) {
-            deserialized_buffer_ =  std::vector<char>(
+            deserialized_buffer_ = std::vector<char>(
                 (std::istreambuf_iterator<char>(ifs)),
                 std::istreambuf_iterator<char>()
                 );
@@ -140,7 +115,8 @@ namespace detection_engine {
         }
     }
 
-    common::datatypes::DetectionResults GenericDetector::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
+    
+    common::datatypes::DetectionResults YoloV3SPPModel::inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) {
         cv::Mat prepared = preprocessImage(imageRGB);
         prepareBuffer(prepared);
         cudaError_t error = cudaMemcpyAsync(device_buffers_->getBuffer(BUFFER_TYPE::INPUT), host_buffers_->getBuffer(BUFFER_TYPE::INPUT), batch_size_ * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream_);
@@ -150,7 +126,7 @@ namespace detection_engine {
         return processResults(imageRGB, confidence, nms_threshold);
     }
 
-    cv::Mat GenericDetector::preprocessImage(const cv::Mat &img) {
+    cv::Mat YoloV3SPPModel::preprocessImage(const cv::Mat &img) {
         int w, h, x, y;
         float r_w = INPUT_W / (img.cols*1.0);
         float r_h = INPUT_H / (img.rows*1.0);
@@ -172,8 +148,7 @@ namespace detection_engine {
         return out;
     }
 
-    void GenericDetector::prepareBuffer(cv::Mat &prepared) {
-        //TODO: may be there is faster way
+    void YoloV3SPPModel::prepareBuffer(cv::Mat &prepared) {
         float * input_host_buffer_ = (float*)host_buffers_->getBuffer(BUFFER_TYPE::INPUT);
         for (int i = 0; i < INPUT_H * INPUT_W; i++) {
             input_host_buffer_[i] = prepared.at<cv::Vec3b>(i)[2] / 255.0f;
@@ -182,10 +157,10 @@ namespace detection_engine {
         }
     }
 
-    common::datatypes::DetectionResults GenericDetector::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
-        std::vector<Detection> res;
+    common::datatypes::DetectionResults YoloV3SPPModel::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
+        std::vector<YoloV3SPP::Detection> res;
         float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
-        Utils::nms(res, output_host_buffer, conf, nms_thresh);
+        yolov3_utils::nms(res, output_host_buffer, conf, nms_thresh);
 
         float r_w = INPUT_W / (prepared.cols * 1.0);
         float r_h = INPUT_H / (prepared.rows * 1.0);
@@ -221,4 +196,5 @@ namespace detection_engine {
         }
         return outputs;
     }
+
 }

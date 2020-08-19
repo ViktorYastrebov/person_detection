@@ -1,4 +1,6 @@
-#include "generic_detector.h"
+//#include "generic_detector.h"
+#include "yolov3_model.h"
+#include "yolov5_model.h"
 #include "deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
 
@@ -14,7 +16,7 @@ int main(int argc, char *argv[]) {
         std::filesystem::path deep_sort_model(argv[3]);
 
         cv::VideoCapture video_stream(file_name);
-        auto detector = std::make_unique<detection_engine::GenericDetector>(model_path);
+        auto detector = std::make_unique<detector::YoloV3SPPModel>(model_path);
         auto deep_sort = std::make_unique<deep_sort_tracker::DeepSort>(deep_sort_model);
 
         constexpr const float max_cosine_distance = 0.2;

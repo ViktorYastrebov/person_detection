@@ -1,10 +1,10 @@
-#include "yololayer.h"
+#include "yolov3_spp_layer.h"
 
-using namespace Yolo;
+using namespace YoloV3SPP;
 
 namespace nvinfer1
 {
-    YoloLayerPlugin::YoloLayerPlugin()
+    YoloV3SPPLayerPlugin::YoloV3SPPLayerPlugin()
     {
         mClassCount = CLASS_NUM;
         mYoloKernel.clear();
@@ -15,12 +15,12 @@ namespace nvinfer1
         mKernelCount = mYoloKernel.size();
     }
     
-    YoloLayerPlugin::~YoloLayerPlugin()
+    YoloV3SPPLayerPlugin::~YoloV3SPPLayerPlugin()
     {
     }
 
     // create the plugin at runtime from a byte stream
-    YoloLayerPlugin::YoloLayerPlugin(const void* data, size_t length)
+    YoloV3SPPLayerPlugin::YoloV3SPPLayerPlugin(const void* data, size_t length)
     {
         using namespace Tn;
         const char *d = reinterpret_cast<const char *>(data), *a = d;
@@ -35,7 +35,7 @@ namespace nvinfer1
         assert(d == a + length);
     }
 
-    void YoloLayerPlugin::serialize(void* buffer) const
+    void YoloV3SPPLayerPlugin::serialize(void* buffer) const
     {
         using namespace Tn;
         char* d = static_cast<char*>(buffer), *a = d;
@@ -49,17 +49,17 @@ namespace nvinfer1
         assert(d == a + getSerializationSize());
     }
     
-    size_t YoloLayerPlugin::getSerializationSize() const
+    size_t YoloV3SPPLayerPlugin::getSerializationSize() const
     {  
-        return sizeof(mClassCount) + sizeof(mThreadCount) + sizeof(mKernelCount)  + sizeof(Yolo::YoloKernel) * mYoloKernel.size();
+        return sizeof(mClassCount) + sizeof(mThreadCount) + sizeof(mKernelCount)  + sizeof(YoloV3SPP::YoloKernel) * mYoloKernel.size();
     }
 
-    int YoloLayerPlugin::initialize()
+    int YoloV3SPPLayerPlugin::initialize()
     { 
         return 0;
     }
     
-    Dims YoloLayerPlugin::getOutputDimensions(int index, const Dims* inputs, int nbInputDims)
+    Dims YoloV3SPPLayerPlugin::getOutputDimensions(int index, const Dims* inputs, int nbInputDims)
     {
         //output the result to channel
         int totalsize = MAX_OUTPUT_BBOX_COUNT * sizeof(Detection) / sizeof(float);
@@ -68,65 +68,66 @@ namespace nvinfer1
     }
 
     // Set plugin namespace
-    void YoloLayerPlugin::setPluginNamespace(const char* pluginNamespace)
+    void YoloV3SPPLayerPlugin::setPluginNamespace(const char* pluginNamespace)
     {
         mPluginNamespace = pluginNamespace;
     }
 
-    const char* YoloLayerPlugin::getPluginNamespace() const
+    const char* YoloV3SPPLayerPlugin::getPluginNamespace() const
     {
         return mPluginNamespace;
     }
 
     // Return the DataType of the plugin output at the requested index
-    DataType YoloLayerPlugin::getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const
+    DataType YoloV3SPPLayerPlugin::getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const
     {
         return DataType::kFLOAT;
     }
 
     // Return true if output tensor is broadcast across a batch.
-    bool YoloLayerPlugin::isOutputBroadcastAcrossBatch(int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const
+    bool YoloV3SPPLayerPlugin::isOutputBroadcastAcrossBatch(int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const
     {
         return false;
     }
 
     // Return true if plugin can use input that is broadcast across batch without replication.
-    bool YoloLayerPlugin::canBroadcastInputAcrossBatch(int inputIndex) const
+    bool YoloV3SPPLayerPlugin::canBroadcastInputAcrossBatch(int inputIndex) const
     {
         return false;
     }
 
-    void YoloLayerPlugin::configurePlugin(const PluginTensorDesc* in, int nbInput, const PluginTensorDesc* out, int nbOutput)
+    void YoloV3SPPLayerPlugin::configurePlugin(const PluginTensorDesc* in, int nbInput, const PluginTensorDesc* out, int nbOutput)
     {
     }
 
     // Attach the plugin object to an execution context and grant the plugin the access to some context resource.
-    void YoloLayerPlugin::attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext, IGpuAllocator* gpuAllocator)
+    void YoloV3SPPLayerPlugin::attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext, IGpuAllocator* gpuAllocator)
     {
     }
 
     // Detach the plugin object from its execution context.
-    void YoloLayerPlugin::detachFromContext() {}
+    void YoloV3SPPLayerPlugin::detachFromContext() {}
 
-    const char* YoloLayerPlugin::getPluginType() const
+    const char* YoloV3SPPLayerPlugin::getPluginType() const
     {
-        return "YoloLayer_TRT";
+        //return "YoloLayer_TRT";
+        return "YoloV3SPPLayer_TRT";
     }
 
-    const char* YoloLayerPlugin::getPluginVersion() const
+    const char* YoloV3SPPLayerPlugin::getPluginVersion() const
     {
         return "1";
     }
 
-    void YoloLayerPlugin::destroy()
+    void YoloV3SPPLayerPlugin::destroy()
     {
         delete this;
     }
 
     // Clone the plugin
-    IPluginV2IOExt* YoloLayerPlugin::clone() const
+    IPluginV2IOExt* YoloV3SPPLayerPlugin::clone() const
     {
-        YoloLayerPlugin *p = new YoloLayerPlugin();
+        YoloV3SPPLayerPlugin *p = new YoloV3SPPLayerPlugin();
         p->setPluginNamespace(mPluginNamespace);
         return p;
     }
@@ -178,7 +179,7 @@ namespace nvinfer1
         }
     }
 
-    void YoloLayerPlugin::forwardGpu(const float *const * inputs, float* output, cudaStream_t stream, int batchSize) {
+    void YoloV3SPPLayerPlugin::forwardGpu(const float *const * inputs, float* output, cudaStream_t stream, int batchSize) {
         void* devAnchor;
         size_t AnchorLen = sizeof(float)* CHECK_COUNT*2;
         CUDA_CHECK(cudaMalloc(&devAnchor,AnchorLen));
@@ -204,7 +205,7 @@ namespace nvinfer1
     }
 
 
-    int YoloLayerPlugin::enqueue(int batchSize, const void*const * inputs, void** outputs, void* workspace, cudaStream_t stream)
+    int YoloV3SPPLayerPlugin::enqueue(int batchSize, const void*const * inputs, void** outputs, void* workspace, cudaStream_t stream)
     {
         //assert(batchSize == 1);
         //GPU
@@ -214,10 +215,10 @@ namespace nvinfer1
         return 0;
     }
 
-    PluginFieldCollection YoloPluginCreator::mFC{};
-    std::vector<PluginField> YoloPluginCreator::mPluginAttributes;
+    PluginFieldCollection YoloV3SPPPluginCreator::mFC{};
+    std::vector<PluginField> YoloV3SPPPluginCreator::mPluginAttributes;
 
-    YoloPluginCreator::YoloPluginCreator()
+    YoloV3SPPPluginCreator::YoloV3SPPPluginCreator()
     {
         mPluginAttributes.clear();
 
@@ -225,33 +226,34 @@ namespace nvinfer1
         mFC.fields = mPluginAttributes.data();
     }
 
-    const char* YoloPluginCreator::getPluginName() const
+    const char* YoloV3SPPPluginCreator::getPluginName() const
     {
-            return "YoloLayer_TRT";
+        //return "YoloLayer_TRT";
+        return "YoloV3SPPLayer_TRT";
     }
 
-    const char* YoloPluginCreator::getPluginVersion() const
+    const char* YoloV3SPPPluginCreator::getPluginVersion() const
     {
             return "1";
     }
 
-    const PluginFieldCollection* YoloPluginCreator::getFieldNames()
+    const PluginFieldCollection* YoloV3SPPPluginCreator::getFieldNames()
     {
             return &mFC;
     }
 
-    IPluginV2IOExt* YoloPluginCreator::createPlugin(const char* name, const PluginFieldCollection* fc)
+    IPluginV2IOExt* YoloV3SPPPluginCreator::createPlugin(const char* name, const PluginFieldCollection* fc)
     {
-        YoloLayerPlugin* obj = new YoloLayerPlugin();
+        YoloV3SPPLayerPlugin* obj = new YoloV3SPPLayerPlugin();
         obj->setPluginNamespace(mNamespace.c_str());
         return obj;
     }
 
-    IPluginV2IOExt* YoloPluginCreator::deserializePlugin(const char* name, const void* serialData, size_t serialLength)
+    IPluginV2IOExt* YoloV3SPPPluginCreator::deserializePlugin(const char* name, const void* serialData, size_t serialLength)
     {
         // This object will be deleted when the network is destroyed, which will
         // call MishPlugin::destroy()
-        YoloLayerPlugin* obj = new YoloLayerPlugin(serialData, serialLength);
+        YoloV3SPPLayerPlugin* obj = new YoloV3SPPLayerPlugin(serialData, serialLength);
         obj->setPluginNamespace(mNamespace.c_str());
         return obj;
     }

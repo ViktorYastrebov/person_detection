@@ -1,7 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include "cuda_runtime_api.h"
-#include "logging.h"
+#include "common/logging.h"
 #include "common.hpp"
 
 #define USE_FP16  // comment out this if want to use FP32
@@ -18,23 +18,26 @@
 //#define STR2(x) STR1(x)
 
 // stuff we know about the network and the input/output blobs
-static const int INPUT_H = Yolo::INPUT_H;
-static const int INPUT_W = Yolo::INPUT_W;
-static const int OUTPUT_SIZE = Yolo::MAX_OUTPUT_BBOX_COUNT * sizeof(Yolo::Detection) / sizeof(float) + 1;  // we assume the yololayer outputs no more than 1000 boxes that conf >= 0.1
-const char* INPUT_BLOB_NAME = "data";
-const char* OUTPUT_BLOB_NAME = "prob";
+static const int INPUT_H = YoloV5::INPUT_H;
+static const int INPUT_W = YoloV5::INPUT_W;
+//static const int OUTPUT_SIZE = YoloV5::MAX_OUTPUT_BBOX_COUNT * sizeof(YoloV5::Detection) / sizeof(float) + 1;  // we assume the yololayer outputs no more than 1000 boxes that conf >= 0.1
+static const int OUTPUT_SIZE = YoloV5::OUTPUT_SIZE;
+const char* INPUT_BLOB_NAME = YoloV5::INPUT_BLOB_NAME;
+const char* OUTPUT_BLOB_NAME = YoloV5::OUTPUT_BLOB_NAME;
 static Logger gLogger;
-REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
+
+REGISTER_TENSORRT_PLUGIN(YoloV5PluginCreator);
 
 // Creat the engine using only the API and not any parser.
-ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
+ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, const std::string &file, bool use_float16) {
     INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
     ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{3, INPUT_H, INPUT_W});
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5s.wts");
+    //std::map<std::string, Weights> weightMap = loadWeights("../yolov5s.wts");
+    std::map<std::string, Weights> weightMap = loadWeights(file);
     Weights emptywts{DataType::kFLOAT, nullptr, 0};
 
     // yolov5 backbone
@@ -76,23 +79,23 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
     ITensor* inputTensors16[] = {deconv15->getOutput(0), bottleneck_csp4->getOutput(0)};
     auto cat16 = network->addConcatenation(inputTensors16, 2);
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 256, 128, 1, false, 1, 0.5, "model.17");
-    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
 
     auto conv19 = convBnLeaky(network, weightMap, *bottleneck_csp17->getOutput(0), 128, 3, 2, 1, "model.18");
     ITensor* inputTensors20[] = {conv19->getOutput(0), conv14->getOutput(0)};
     auto cat20 = network->addConcatenation(inputTensors20, 2);
     auto bottleneck_csp21 = bottleneckCSP(network, weightMap, *cat20->getOutput(0), 256, 256, 1, false, 1, 0.5, "model.20");
-    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
 
     auto conv23 = convBnLeaky(network, weightMap, *bottleneck_csp21->getOutput(0), 256, 3, 2, 1, "model.21");
     ITensor* inputTensors24[] = {conv23->getOutput(0), conv10->getOutput(0)};
     auto cat24 = network->addConcatenation(inputTensors24, 2);
     auto bottleneck_csp25 = bottleneckCSP(network, weightMap, *cat24->getOutput(0), 512, 512, 1, false, 1, 0.5, "model.23");
-    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{1, 1}, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
-    auto creator = getPluginRegistry()->getPluginCreator("YoloLayer_TRT", "1");
+    auto creator = getPluginRegistry()->getPluginCreator("YoloV5Layer_TRT", "1");
     const PluginFieldCollection* pluginData = creator->getFieldNames();
-    IPluginV2 *pluginObj = creator->createPlugin("yololayer", pluginData);
+    IPluginV2 *pluginObj = creator->createPlugin("yolov5_layer", pluginData);
     ITensor* inputTensors_yolo[] = {conv26->getOutput(0), conv22->getOutput(0), conv18->getOutput(0)};
     auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
 
@@ -102,9 +105,9 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
     // Build engine
     builder->setMaxBatchSize(maxBatchSize);
     config->setMaxWorkspaceSize(16 * (1 << 20));  // 16MB
-#ifdef USE_FP16
-    config->setFlag(BuilderFlag::kFP16);
-#endif
+    if (use_float16) {
+        config->setFlag(BuilderFlag::kFP16);
+    }
     std::cout << "Building engine, please wait for a while..." << std::endl;
     ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
@@ -121,14 +124,14 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
+ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, const std::string &file, bool use_float16) {
     INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
     ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5m.wts");
+    std::map<std::string, Weights> weightMap = loadWeights(file);
     Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
 
     /* ------ yolov5 backbone------ */
@@ -172,7 +175,7 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 384, 192, 2, false, 1, 0.5, "model.17");
 
     //yolo layer 1
-    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
 
     auto conv19 = convBnLeaky(network, weightMap, *bottleneck_csp17->getOutput(0), 192, 3, 2, 1, "model.18");
 
@@ -182,7 +185,7 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp21 = bottleneckCSP(network, weightMap, *cat20->getOutput(0), 384, 384, 2, false, 1, 0.5, "model.20");
 
     //yolo layer 2
-    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
 
     auto conv23 = convBnLeaky(network, weightMap, *bottleneck_csp21->getOutput(0), 384, 3, 2, 1, "model.21");
 
@@ -192,11 +195,11 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp25 = bottleneckCSP(network, weightMap, *cat24->getOutput(0), 768, 768, 2, false, 1, 0.5, "model.23");
 
     // yolo layer 3
-    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
-    auto creator = getPluginRegistry()->getPluginCreator("YoloLayer_TRT", "1");
+    auto creator = getPluginRegistry()->getPluginCreator("YoloV5Layer_TRT", "1");
     const PluginFieldCollection* pluginData = creator->getFieldNames();
-    IPluginV2 *pluginObj = creator->createPlugin("yololayer", pluginData);
+    IPluginV2 *pluginObj = creator->createPlugin("yolov5_layer", pluginData);
     ITensor* inputTensors_yolo[] = { conv26->getOutput(0), conv22->getOutput(0), conv18->getOutput(0) };
     auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
 
@@ -206,9 +209,9 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     // Build engine
     builder->setMaxBatchSize(maxBatchSize);
     config->setMaxWorkspaceSize(16 * (1 << 20));  // 16MB
-#ifdef USE_FP16
-    config->setFlag(BuilderFlag::kFP16);
-#endif
+    if (use_float16) {
+        config->setFlag(BuilderFlag::kFP16);
+    }
     std::cout << "Building engine, please wait for a while..." << std::endl;
     ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
@@ -225,14 +228,14 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
+ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, const std::string &file, bool use_float16) {
     INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
     ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5l.wts");
+    std::map<std::string, Weights> weightMap = loadWeights(file);
     Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
 
     /* ------ yolov5 backbone------ */
@@ -275,7 +278,7 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 512, 256, 3, false, 1, 0.5, "model.17");
 
     //yolo layer 1
-    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
 
     auto conv19 = convBnLeaky(network, weightMap, *bottleneck_csp17->getOutput(0), 256, 3, 2, 1, "model.18");
 
@@ -286,7 +289,7 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp21 = bottleneckCSP(network, weightMap, *cat20->getOutput(0), 512, 512, 3, false, 1, 0.5, "model.20");
 
     //yolo layer 3
-    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
 
     auto conv23 = convBnLeaky(network, weightMap, *bottleneck_csp21->getOutput(0), 512, 3, 2, 1, "model.21");
 
@@ -295,11 +298,11 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
 
     auto bottleneck_csp25 = bottleneckCSP(network, weightMap, *cat24->getOutput(0), 1024, 1024, 3, false, 1, 0.5, "model.23");
 
-    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
-    auto creator = getPluginRegistry()->getPluginCreator("YoloLayer_TRT", "1");
+    auto creator = getPluginRegistry()->getPluginCreator("YoloV5Layer_TRT", "1");
     const PluginFieldCollection* pluginData = creator->getFieldNames();
-    IPluginV2 *pluginObj = creator->createPlugin("yololayer", pluginData);
+    IPluginV2 *pluginObj = creator->createPlugin("yolov5_layer", pluginData);
     ITensor* inputTensors_yolo[] = { conv26->getOutput(0), conv22->getOutput(0), conv18->getOutput(0) };
     auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
 
@@ -309,9 +312,9 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     // Build engine
     builder->setMaxBatchSize(maxBatchSize);
     config->setMaxWorkspaceSize(16 * (1 << 20));  // 16MB
-#ifdef USE_FP16
-    config->setFlag(BuilderFlag::kFP16);
-#endif
+    if (use_float16) {
+        config->setFlag(BuilderFlag::kFP16);
+    }
     std::cout << "Building engine, please wait for a while..." << std::endl;
     ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
@@ -328,14 +331,14 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
+ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, const std::string &file, bool use_float16) {
     INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
     ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5x.wts");
+    std::map<std::string, Weights> weightMap = loadWeights(file);
     Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
 
     /* ------ yolov5 backbone------ */
@@ -379,7 +382,7 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 640, 320, 4, false, 1, 0.5, "model.17");
 
     // yolo layer 1
-    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    IConvolutionLayer* conv18 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
 
     auto conv19 = convBnLeaky(network, weightMap, *bottleneck_csp17->getOutput(0), 320, 3, 2, 1, "model.18");
 
@@ -389,7 +392,7 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp21 = bottleneckCSP(network, weightMap, *cat20->getOutput(0), 640, 640, 4, false, 1, 0.5, "model.20");
 
     // yolo layer 2
-    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    IConvolutionLayer* conv22 = network->addConvolutionNd(*bottleneck_csp21->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
 
     auto conv23 = convBnLeaky(network, weightMap, *bottleneck_csp21->getOutput(0), 640, 3, 2, 1, "model.21");
 
@@ -399,11 +402,11 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     auto bottleneck_csp25 = bottleneckCSP(network, weightMap, *cat24->getOutput(0), 1280, 1280, 4, false, 1, 0.5, "model.23");
 
     // yolo layer 3
-    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    IConvolutionLayer* conv26 = network->addConvolutionNd(*bottleneck_csp25->getOutput(0), 3 * (YoloV5::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
-    auto creator = getPluginRegistry()->getPluginCreator("YoloLayer_TRT", "1");
+    auto creator = getPluginRegistry()->getPluginCreator("YoloV5Layer_TRT", "1");
     const PluginFieldCollection* pluginData = creator->getFieldNames();
-    IPluginV2 *pluginObj = creator->createPlugin("yololayer", pluginData);
+    IPluginV2 *pluginObj = creator->createPlugin("yolov5_layer", pluginData);
     ITensor* inputTensors_yolo[] = { conv26->getOutput(0), conv22->getOutput(0), conv18->getOutput(0) };
     auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
 
@@ -413,9 +416,9 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     // Build engine
     builder->setMaxBatchSize(maxBatchSize);
     config->setMaxWorkspaceSize(16 * (1 << 20));  // 16MB
-#ifdef USE_FP16
-    config->setFlag(BuilderFlag::kFP16);
-#endif
+    if (use_float16) {
+        config->setFlag(BuilderFlag::kFP16);
+    }
     std::cout << "Building engine, please wait for a while..." << std::endl;
     ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
@@ -432,10 +435,10 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-bool APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream, const std::string name) {
+bool APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream, const std::string name, const std::string &file, bool use_f16 = true) {
     // Create builder
 
-    using createFuncT = std::function< ICudaEngine*(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt)>;
+    using createFuncT = std::function< ICudaEngine*(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, const std::string &file, bool use_f16)>;
     const std::map<std::string, createFuncT> builders_map = {
         {"yolov5s", createEngine_s},
         {"yolov5m", createEngine_m},
@@ -453,7 +456,7 @@ bool APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream, const std:
 
     // Create model to populate the network, then set the outputs and create an engine
     //ICudaEngine* engine = (CREATENET(NET))(maxBatchSize, builder, config, DataType::kFLOAT);
-    ICudaEngine* engine = it->second(maxBatchSize, builder, config, DataType::kFLOAT);
+    ICudaEngine* engine = it->second(maxBatchSize, builder, config, DataType::kFLOAT, file, use_f16);
     //ICudaEngine* engine = createEngine(maxBatchSize, builder, config, DataType::kFLOAT);
     assert(engine != nullptr);
 
@@ -507,11 +510,20 @@ int main(int argc, char** argv) {
 
     //std::string engine_name = STR2(NET);
     //engine_name = "yolov5" + engine_name + ".engine";
-    if (argc == 3 && std::string(argv[1]) == "-s") {
-        std::string model_name(argv[2]);
+    if (argc > 1 && std::string(argv[1]) == "-s") {
+        bool use_float16 = true;
+        std::string weights_path;
+        if (argc == 4 && std::string(argv[2]) == "no-f16") {
+            use_float16 = false;
+            weights_path = std::string(argv[3]);
+        } else {
+            weights_path = std::string(argv[2]);
+        }
+        auto model_name = std::filesystem::path(weights_path).stem().string();
+        //std::string model_name(argv[2]);
         const std::string engine_name = model_name + ".engine";
         IHostMemory* modelStream{nullptr};
-        if (APIToModel(BATCH_SIZE, &modelStream, model_name)) {
+        if (APIToModel(BATCH_SIZE, &modelStream, model_name, weights_path, use_float16)) {
             assert(modelStream != nullptr);
             std::ofstream p(engine_name, std::ios::binary);
             if (!p) {
@@ -587,7 +599,7 @@ int main(int argc, char** argv) {
         doInference(*context, data, prob, BATCH_SIZE);
         auto end = std::chrono::system_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-        std::vector<std::vector<Yolo::Detection>> batch_res(fcount);
+        std::vector<std::vector<YoloV5::Detection>> batch_res(fcount);
         for (int b = 0; b < fcount; b++) {
             auto& res = batch_res[b];
             nms(res, &prob[b * OUTPUT_SIZE], CONF_THRESH, NMS_THRESH);

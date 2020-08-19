@@ -12,7 +12,7 @@
     #include <filesystem>
 #endif
 #include "NvInfer.h"
-#include "yololayer.h"
+#include "common/yolov5/yolov5_layer.h"
 
 #define CHECK(status) \
     do\
@@ -29,42 +29,42 @@ using namespace nvinfer1;
 
 cv::Mat preprocess_img(cv::Mat& img) {
     int w, h, x, y;
-    float r_w = Yolo::INPUT_W / (img.cols*1.0);
-    float r_h = Yolo::INPUT_H / (img.rows*1.0);
+    float r_w = YoloV5::INPUT_W / (img.cols*1.0);
+    float r_h = YoloV5::INPUT_H / (img.rows*1.0);
     if (r_h > r_w) {
-        w = Yolo::INPUT_W;
+        w = YoloV5::INPUT_W;
         h = r_w * img.rows;
         x = 0;
-        y = (Yolo::INPUT_H - h) / 2;
+        y = (YoloV5::INPUT_H - h) / 2;
     } else {
         w = r_h* img.cols;
-        h = Yolo::INPUT_H;
-        x = (Yolo::INPUT_W - w) / 2;
+        h = YoloV5::INPUT_H;
+        x = (YoloV5::INPUT_W - w) / 2;
         y = 0;
     }
     cv::Mat re(h, w, CV_8UC3);
     cv::resize(img, re, re.size(), 0, 0, cv::INTER_CUBIC);
-    cv::Mat out(Yolo::INPUT_H, Yolo::INPUT_W, CV_8UC3, cv::Scalar(128, 128, 128));
+    cv::Mat out(YoloV5::INPUT_H, YoloV5::INPUT_W, CV_8UC3, cv::Scalar(128, 128, 128));
     re.copyTo(out(cv::Rect(x, y, re.cols, re.rows)));
     return out;
 }
 
 cv::Rect get_rect(cv::Mat& img, float bbox[4]) {
     int l, r, t, b;
-    float r_w = Yolo::INPUT_W / (img.cols * 1.0);
-    float r_h = Yolo::INPUT_H / (img.rows * 1.0);
+    float r_w = YoloV5::INPUT_W / (img.cols * 1.0);
+    float r_h = YoloV5::INPUT_H / (img.rows * 1.0);
     if (r_h > r_w) {
         l = bbox[0] - bbox[2]/2.f;
         r = bbox[0] + bbox[2]/2.f;
-        t = bbox[1] - bbox[3]/2.f - (Yolo::INPUT_H - r_w * img.rows) / 2;
-        b = bbox[1] + bbox[3]/2.f - (Yolo::INPUT_H - r_w * img.rows) / 2;
+        t = bbox[1] - bbox[3]/2.f - (YoloV5::INPUT_H - r_w * img.rows) / 2;
+        b = bbox[1] + bbox[3]/2.f - (YoloV5::INPUT_H - r_w * img.rows) / 2;
         l = l / r_w;
         r = r / r_w;
         t = t / r_w;
         b = b / r_w;
     } else {
-        l = bbox[0] - bbox[2]/2.f - (Yolo::INPUT_W - r_h * img.cols) / 2;
-        r = bbox[0] + bbox[2]/2.f - (Yolo::INPUT_W - r_h * img.cols) / 2;
+        l = bbox[0] - bbox[2]/2.f - (YoloV5::INPUT_W - r_h * img.cols) / 2;
+        r = bbox[0] + bbox[2]/2.f - (YoloV5::INPUT_W - r_h * img.cols) / 2;
         t = bbox[1] - bbox[3]/2.f;
         b = bbox[1] + bbox[3]/2.f;
         l = l / r_h;
@@ -90,18 +90,18 @@ float iou(float lbox[4], float rbox[4]) {
     return interBoxS/(lbox[2]*lbox[3] + rbox[2]*rbox[3] -interBoxS);
 }
 
-bool cmp(Yolo::Detection& a, Yolo::Detection& b) {
+bool cmp(YoloV5::Detection& a, YoloV5::Detection& b) {
     return a.conf > b.conf;
 }
 
-void nms(std::vector<Yolo::Detection>& res, float *output, float conf_thresh, float nms_thresh = 0.5) {
-    int det_size = sizeof(Yolo::Detection) / sizeof(float);
-    std::map<float, std::vector<Yolo::Detection>> m;
-    for (int i = 0; i < output[0] && i < Yolo::MAX_OUTPUT_BBOX_COUNT; i++) {
+void nms(std::vector<YoloV5::Detection>& res, float *output, float conf_thresh, float nms_thresh = 0.5) {
+    int det_size = sizeof(YoloV5::Detection) / sizeof(float);
+    std::map<float, std::vector<YoloV5::Detection>> m;
+    for (int i = 0; i < output[0] && i < YoloV5::MAX_OUTPUT_BBOX_COUNT; i++) {
         if (output[1 + det_size * i + 4] <= conf_thresh) continue;
-        Yolo::Detection det;
+        YoloV5::Detection det;
         memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));
-        if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<Yolo::Detection>());
+        if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<YoloV5::Detection>());
         m[det.class_id].push_back(det);
     }
     for (auto it = m.begin(); it != m.end(); it++) {
@@ -123,7 +123,7 @@ void nms(std::vector<Yolo::Detection>& res, float *output, float conf_thresh, fl
 
 // TensorRT weight files have a simple space delimited format:
 // [type] [size] <data x size in hex>
-std::map<std::string, Weights> loadWeights(const std::string file) {
+std::map<std::string, Weights> loadWeights(const std::string &file) {
     std::cout << "Loading weights: " << file << std::endl;
     std::map<std::string, Weights> weightMap;
 
@@ -209,10 +209,10 @@ ILayer* convBnLeaky(INetworkDefinition *network, std::map<std::string, Weights>&
 }
 
 ILayer* focus(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, int inch, int outch, int ksize, std::string lname) {
-    ISliceLayer *s1 = network->addSlice(input, Dims3{0, 0, 0}, Dims3{inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2}, Dims3{1, 2, 2});
-    ISliceLayer *s2 = network->addSlice(input, Dims3{0, 1, 0}, Dims3{inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2}, Dims3{1, 2, 2});
-    ISliceLayer *s3 = network->addSlice(input, Dims3{0, 0, 1}, Dims3{inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2}, Dims3{1, 2, 2});
-    ISliceLayer *s4 = network->addSlice(input, Dims3{0, 1, 1}, Dims3{inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2}, Dims3{1, 2, 2});
+    ISliceLayer *s1 = network->addSlice(input, Dims3{0, 0, 0}, Dims3{inch, YoloV5::INPUT_H / 2, YoloV5::INPUT_W / 2}, Dims3{1, 2, 2});
+    ISliceLayer *s2 = network->addSlice(input, Dims3{0, 1, 0}, Dims3{inch, YoloV5::INPUT_H / 2, YoloV5::INPUT_W / 2}, Dims3{1, 2, 2});
+    ISliceLayer *s3 = network->addSlice(input, Dims3{0, 0, 1}, Dims3{inch, YoloV5::INPUT_H / 2, YoloV5::INPUT_W / 2}, Dims3{1, 2, 2});
+    ISliceLayer *s4 = network->addSlice(input, Dims3{0, 1, 1}, Dims3{inch, YoloV5::INPUT_H / 2, YoloV5::INPUT_W / 2}, Dims3{1, 2, 2});
     ITensor* inputTensors[] = {s1->getOutput(0), s2->getOutput(0), s3->getOutput(0), s4->getOutput(0)};
     auto cat = network->addConcatenation(inputTensors, 4);
     auto conv = convBnLeaky(network, weightMap, *cat->getOutput(0), outch, ksize, 1, 1, lname + ".conv");

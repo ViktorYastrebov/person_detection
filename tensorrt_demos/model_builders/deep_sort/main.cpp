@@ -5,8 +5,8 @@
 #include "NvOnnxParser.h" 
 #include <cuda_runtime_api.h>
 
-#include "utils.h"
-#include "logging.h"
+#include "common/common.h"
+#include "common/logging.h"
 #include <filesystem>
 #include <fstream>
 
@@ -17,9 +17,9 @@
 //      By default it's BATCH_SIZE = 32
 
 bool buildEngine(const std::filesystem::path &model_path, const int MAX_BATCH_SIZE = 32) {
-    using namespace helper;
+    using namespace common;
     Logger gLogger_;
-    auto builder = TensorRTPtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger_.getTRTLogger()));
+    auto builder = TensorRTUPtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger_.getTRTLogger()));
     if (!builder)
     {
         return false;
@@ -27,19 +27,19 @@ bool buildEngine(const std::filesystem::path &model_path, const int MAX_BATCH_SI
     builder->setMaxBatchSize(MAX_BATCH_SIZE);
 
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
-    auto network = TensorRTPtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
+    auto network = TensorRTUPtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
     if (!network)
     {
         return false;
     }
 
-    auto config = TensorRTPtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
+    auto config = TensorRTUPtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
     if (!config)
     {
         return false;
     }
 
-    auto parser = TensorRTPtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, gLogger_.getTRTLogger()));
+    auto parser = TensorRTUPtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, gLogger_.getTRTLogger()));
     if (!parser)
     {
         return false;

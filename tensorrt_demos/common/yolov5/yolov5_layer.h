@@ -1,24 +1,20 @@
-#ifndef _YOLO_LAYER_H
-#define _YOLO_LAYER_H
+#pragma once
 
-#include <assert.h>
-#include <cmath>
-#include <string.h>
-#include <cublas_v2.h>
+#include <vector>
+#include <string>
 #include "NvInfer.h"
-#include "Utils.h"
-#include <iostream>
 #include "decl_spec.h"
 
-namespace Yolo
+namespace YoloV5
 {
     static constexpr int CHECK_COUNT = 3;
     static constexpr float IGNORE_THRESH = 0.1f;
-    //static constexpr int MAX_OUTPUT_BBOX_COUNT = 80*80 + 40*40 + 20*20;
     static constexpr int MAX_OUTPUT_BBOX_COUNT = 1000;
     static constexpr int CLASS_NUM = 80;
     static constexpr int INPUT_H = 608;
     static constexpr int INPUT_W = 608;
+    constexpr const char* INPUT_BLOB_NAME = "data";
+    constexpr const char* OUTPUT_BLOB_NAME = "prob";
 
     struct EXPORT YoloKernel
     {
@@ -44,25 +40,24 @@ namespace Yolo
     };
 
     static constexpr int LOCATIONS = 4;
-    struct alignas(float) Detection{
-        //x y w h
+    struct EXPORT alignas(float) Detection {
+        //center_x center_y w h
         float bbox[LOCATIONS];
-        float det_confidence;
+        float conf;  // bbox_conf * cls_conf
         float class_id;
-        float class_confidence;
     };
+    static constexpr const int OUTPUT_SIZE = MAX_OUTPUT_BBOX_COUNT * sizeof(Detection) / sizeof(float) + 1;
 }
-
 
 namespace nvinfer1
 {
-    class EXPORT YoloLayerPlugin: public IPluginV2IOExt
+    class EXPORT YoloV5LayerPlugin: public IPluginV2IOExt
     {
         public:
-            explicit YoloLayerPlugin();
-            YoloLayerPlugin(const void* data, size_t length);
+            explicit YoloV5LayerPlugin();
+            YoloV5LayerPlugin(const void* data, size_t length);
 
-            ~YoloLayerPlugin();
+            ~YoloV5LayerPlugin();
 
             int getNbOutputs() const override
             {
@@ -116,17 +111,18 @@ namespace nvinfer1
             void forwardGpu(const float *const * inputs,float * output, cudaStream_t stream,int batchSize = 1);
             int mClassCount;
             int mKernelCount;
-            std::vector<Yolo::YoloKernel> mYoloKernel;
+            std::vector<YoloV5::YoloKernel> mYoloKernel;
             int mThreadCount = 256;
+            void** mAnchor;
             const char* mPluginNamespace;
     };
 
-    class EXPORT YoloPluginCreator : public IPluginCreator
+    class EXPORT YoloV5PluginCreator : public IPluginCreator
     {
         public:
-            YoloPluginCreator();
+            YoloV5PluginCreator();
 
-            ~YoloPluginCreator() override = default;
+            ~YoloV5PluginCreator() override = default;
 
             const char* getPluginName() const override;
 
@@ -157,5 +153,3 @@ namespace nvinfer1
 
 
 };
-
-#endif 
