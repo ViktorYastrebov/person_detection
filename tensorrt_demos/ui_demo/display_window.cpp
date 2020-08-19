@@ -50,7 +50,7 @@ void DisplayFrame::displayTracks(QPaintEvent *p) {
 
             cv::Mat scaled;
             cv::resize(data.frame, scaled, cv::Size(new_width, new_height));
-            QImage img = QImage((uchar*)scaled.data, scaled.cols, scaled.rows, scaled.step, QImage::Format_RGB888);
+            QImage img = QImage((uchar*)scaled.data, scaled.cols, scaled.rows, scaled.step, QImage::Format_BGR888);
 
             //QPixmap pixmapImage = QPixmap::fromImage(img);
 
