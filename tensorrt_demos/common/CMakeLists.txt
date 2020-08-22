@@ -20,6 +20,8 @@ set(SOURCE_FILES
 	"common.h"
 	"common.cpp"
 	"logging.h"
+	"hungarian_eigen/hungarian.h"
+	"hungarian_eigen/hungarian.cpp"
 	)
 
 add_library(common SHARED ${SOURCE_FILES})

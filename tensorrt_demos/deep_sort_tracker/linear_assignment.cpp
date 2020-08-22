@@ -1,10 +1,12 @@
 #include "linear_assignment.h"
-#include "hungarian_eigen/hungarian.h"
+//#include "hungarian_eigen/hungarian.h"
+#include "common/hungarian_eigen/hungarian.h"
 #include <map>
 
 namespace linear_assignment {
 
     using namespace common::datatypes;
+    using namespace deep_sort;
 
     const double chi2inv95[10] = {
         0,
@@ -21,13 +23,10 @@ namespace linear_assignment {
 
 
     TrackerMatch matching_cascade(Tracker* distance_metric,
-        //tracker::GATED_METRIC_FUNC distance_metric_func,
         Tracker::MetricFunction metric_function,
         float max_distance,
         int cascade_depth,
         std::vector<Track>& tracks,
-        //const DETECTIONS& detections,
-        //const std::vector<DetectionResult> &detections,
         const Detections &detections,
         std::vector<int> &track_indices,
         std::vector<int> detection_indices)
@@ -68,12 +67,6 @@ namespace linear_assignment {
                 max_distance, tracks, detections, track_indices_l,
                 unmatched_detections);
 
-            //INFO: depends on the function
-            //TrackerMatch tmp = min_cost_matching(
-            //    distance_metric,
-            //    max_distance, tracks, detections, track_indices_l,
-            //    unmatched_detections);
-            //TODO: refactor
             unmatched_detections.assign(tmp.unmatched_detections.begin(), tmp.unmatched_detections.end());
             for (size_t i = 0; i < tmp.matches.size(); i++) {
                 MatchData pa = tmp.matches[i];
@@ -92,12 +85,9 @@ namespace linear_assignment {
 
     TrackerMatch min_cost_matching(
         Tracker* distance_metric,
-        //tracker::GATED_METRIC_FUNC distance_metric_func,
         Tracker::MetricFunction metric_function,
         float max_distance,
         std::vector<Track>& tracks,
-        //const DETECTIONS& detections,
-        //const std::vector<DetectionResult> &detections,
         const Detections &detections,
         std::vector<int>& track_indices,
         std::vector<int>& detection_indices)
@@ -120,9 +110,6 @@ namespace linear_assignment {
             res.unmatched_detections.assign(detection_indices.begin(), detection_indices.end());
             return res;
         }
-
-        //depends on the external usage
-        //CostMatrixType cost_matrix = distance_metric->iou_cost(tracks, detections, track_indices, detection_indices);
 
         constexpr const float EPSILON = 1e-5;
         CostMatrixType cost_matrix = (distance_metric->*(metric_function)) (tracks, detections, track_indices, detection_indices);
@@ -178,11 +165,8 @@ namespace linear_assignment {
 
     CostMatrixType gate_cost_matrix(
         KalmanFilter* kf,
-        //DYNAMICM& cost_matrix,
         CostMatrixType &costMat,
         std::vector<Track>& tracks,
-        //const DETECTIONS& detections,
-        //const std::vector<DetectionResult> &detections,
         const Detections &detections,
         const std::vector<int>& track_indices,
         const std::vector<int>& detection_indices,
@@ -193,7 +177,6 @@ namespace linear_assignment {
         double gating_threshold = chi2inv95[gating_dim];
         std::vector<DetectionBox> measurements;
         for (int i : detection_indices) {
-            //DETECTION_ROW t = detections[i];
             measurements.push_back(detections[i].to_xyah());
         }
 

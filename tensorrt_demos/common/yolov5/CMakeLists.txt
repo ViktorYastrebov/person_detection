@@ -1,42 +1,18 @@
-cmake_minimum_required(VERSION 2.6)
-
+cmake_minimum_required(VERSION 3.5)
 project(yolov5_plugin)
-
-# add_definitions(-std=c++11)
 
 # USAGE EXAMPLE:
 # cmake -DCMAKE_BUILD_TYPE=Release -DOPENCV_MODULE_PATH="d:/viktor_project/installs/opencv_4.4/opencv_cuda_11_release" -DTENSOR_RT_BASE="d:/viktor_project/installs/TensorRT-7.1.3.4.Windows10.x86_64.cuda-11.0.cudnn8.0/TensorRT-7.1.3.4" -G"Visual Studio 15 2017 Win64" ..
 
-option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-# set(CMAKE_CXX_STANDARD 17)
-# set(CMAKE_BUILD_TYPE Debug)
-
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/output")
-
 find_package(CUDA ${_CUDA_VERSION} REQUIRED)
 
-# set(CUDA_NVCC_PLAGS ${CUDA_NVCC_PLAGS};-std=c++11;-g;-G;-gencode;arch=compute_30;code=sm_30)
+option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
-# include_directories(${PROJECT_SOURCE_DIR})
-# set(TENSOR_RT_INCLUDE ${TENSOR_RT_BASE}/include)
 include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE})
 link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib)
-
-
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Ofast -Wfatal-errors -D_MWAITXINTRIN_H_INCLUDED")
 
 cuda_add_library(yolov5_plugin SHARED ${PROJECT_SOURCE_DIR}/yolov5_layer.cu ${PROJECT_SOURCE_DIR}/yolov5_layer.h ${PROJECT_SOURCE_DIR}/decl_spec.h)
 # INFO: WinNT only
 target_compile_definitions(yolov5_plugin PUBLIC yolov5_layer_export)
-
-# find_package(OpenCV PATHS ${OPENCV_MODULE_PATH} NO_DEFAULT_PATH)
-# include_directories(OpenCV_INCLUDE_DIRS)
-
-# add_executable(yolov5 ${PROJECT_SOURCE_DIR}/yolov5.cpp)
 target_link_libraries(yolov5_plugin nvinfer)
 target_link_libraries(yolov5_plugin ${CUDA_LIBRARIES})
-# target_link_libraries(yolov5 yololayer)
-# target_link_libraries(yolov5 ${OpenCV_LIBS})
-
-# add_definitions(-O2 -pthread)
-

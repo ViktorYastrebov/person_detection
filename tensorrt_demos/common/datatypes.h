@@ -19,6 +19,7 @@ namespace common {
             std::vector<int> unmatched_tracks;
             std::vector<int> unmatched_detections;
         };
+
         using CostMatrixType = Eigen::Matrix<float, -1, -1, Eigen::RowMajor>;
         using KalmanMeanMatType = Eigen::Matrix<float, 1, 8, Eigen::RowMajor>;
         using KalmanCovAMatType = Eigen::Matrix<float, 8, 8, Eigen::RowMajor>;

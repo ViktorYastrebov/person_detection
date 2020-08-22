@@ -36,7 +36,7 @@ set(TENSOR_RT_INCLUDE ${TENSOR_RT_BASE}/include)
 
 # INFO: set directory to the base of built OpenCV
 if (${BUILD_TYPE} STREQUAL "debug")
-	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.4/opencv_cuda_11_debug")
+	set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_4.4/opencv_cuda_10_debug")
 	# set(INSTALLED_OPENCV_PATH "f:/developer02/workspace/deps/opencv_4.4.0_cuda_10_debug")
 	# set(INSTALLED_OPENCV_PATH "d:/viktor_project/installs/opencv_master/opencv_cuda_10.2_debug")
 else()
@@ -52,16 +52,7 @@ set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(common)
 add_subdirectory(detection_engine)
 add_subdirectory(deep_sort_tracker)
+add_subdirectory(sort_tracker)
 add_subdirectory(model_builders)
 add_subdirectory(ui_demo)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-set(SOURCE_FILES "main.cpp")
-
-find_package(CUDA ${_CUDA_VERSION} REQUIRED)
-set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-link_directories(${TENSOR_RT_BASE}/lib)
-
-
-add_executable(tensort_demo ${SOURCE_FILES})
-target_link_libraries(tensort_demo detection_engine deep_sort_tracker)
+add_subdirectory(simple_demo)

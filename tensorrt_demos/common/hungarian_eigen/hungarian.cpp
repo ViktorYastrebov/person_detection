@@ -1,6 +1,5 @@
 #include "hungarian.h"
 #include "munkres/munkres.h"
-//#include "munkres/adapters/boostmatrixadapter.h"
 
 namespace hungarian {
     using namespace common::datatypes;
