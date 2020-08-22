@@ -16,7 +16,7 @@ void sort_tracking(int argc, char*argv[]) {
 
         cv::VideoCapture video_stream(file_name);
         auto detector = std::make_unique<detector::YoloV3SPPModel>(model_path);
-        auto tracker = sort_tracker::TrackersPool(10);
+        auto tracker = tracker::TrackersPool(10);
 
         cv::Mat frame;
         while (video_stream.read(frame)) {
@@ -104,5 +104,6 @@ void deep_sort_tracking(int argc, char*argv[]) {
 
 int main(int argc, char *argv[]) {
     sort_tracking(argc, argv);
+    //deep_sort_tracking(argc, argv);
     return 0;
 }

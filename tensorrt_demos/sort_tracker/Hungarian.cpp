@@ -12,7 +12,7 @@
 #include "Hungarian.h"
 
 
-namespace sort_tracker {
+namespace tracker {
 
     using namespace std;
 

@@ -16,7 +16,7 @@
 #include <vector>
 
 //TODO: find the better GPU solution
-namespace sort_tracker {
+namespace tracker {
     class HungarianAlgorithm
     {
     public:
