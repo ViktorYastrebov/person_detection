@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 
 project(yolov3_plugin)
 
-option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-
 find_package(CUDA ${_CUDA_VERSION} REQUIRED)
+
+option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
 include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE})
 link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib)

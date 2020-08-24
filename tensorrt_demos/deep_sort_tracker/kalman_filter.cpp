@@ -22,11 +22,6 @@ KalmanFilter::KalmanFilter()
 KalmanFilter::MatResult KalmanFilter::initiate(const DetectionBox& measurement) {
     DetectionBox mean_pos = measurement;
     DetectionBox mean_vel({ 0,0,0,0 });
-    //for (int i = 0; i < 4; i++) {
-    //    mean_vel(i) = 0;
-    //}
-
-    //KAL_MEAN mean;
     KalmanMeanMatType mean;
     for (int i = 0; i < 8; i++) {
         if (i < 4) {
@@ -36,17 +31,7 @@ KalmanFilter::MatResult KalmanFilter::initiate(const DetectionBox& measurement) 
         }
     }
 
-    //KAL_MEAN std;
     KalmanMeanMatType std;
-    //std(0) = 2 * _std_weight_position * measurement[3];
-    //std(1) = 2 * _std_weight_position * measurement[3];
-    //std(2) = 1e-2;
-    //std(3) = 2 * _std_weight_position * measurement[3];
-    //std(4) = 10 * _std_weight_velocity * measurement[3];
-    //std(5) = 10 * _std_weight_velocity * measurement[3];
-    //std(6) = 1e-5;
-    //std(7) = 10 * _std_weight_velocity * measurement[3];
-
     std(0) = 2 * _std_weight_position * measurement[3];
     std(1) = 2 * _std_weight_position * measurement[3];
     std(2) = 1e-2;
@@ -72,14 +57,10 @@ void KalmanFilter::predict(KalmanMeanMatType& mean, KalmanCovAMatType& covarianc
         _std_weight_velocity * mean(3),
         1e-5,
         _std_weight_velocity * mean(3);
-    //KAL_MEAN tmp;
     KalmanMeanMatType tmp;
     tmp.block<1, 4>(0, 0) = std_pos;
     tmp.block<1, 4>(0, 4) = std_vel;
     tmp = tmp.array().square();
-    //KAL_COVA motion_cov = tmp.asDiagonal();
-    //KAL_MEAN mean1 = this->_motion_mat * mean.transpose();
-    //KAL_COVA covariance1 = this->_motion_mat * covariance *(_motion_mat.transpose());
     KalmanCovAMatType motion_cov = tmp.asDiagonal();
     KalmanMeanMatType mean1 = _motion_mat * mean.transpose();
     KalmanCovAMatType covariance1 = _motion_mat * covariance * (_motion_mat.transpose());
@@ -93,14 +74,11 @@ KalmanFilter::HMatResult KalmanFilter::project(const KalmanMeanMatType& mean, co
     MatDetection std;
     std << _std_weight_position * mean(3), _std_weight_position * mean(3),
         1e-1, _std_weight_position * mean(3);
-    //KAL_HMEAN mean1 = _update_mat * mean.transpose();
     KalmanHMeanType mean1 = _update_mat * mean.transpose();
-    //KAL_HCOVA covariance1 = _update_mat * covariance * (_update_mat.transpose());
     KalmanHCovType covariance1 = _update_mat * covariance * (_update_mat.transpose());
     Eigen::Matrix<float, 4, 4> diag = std.asDiagonal();
     diag = diag.array().square().matrix();
     covariance1 += diag;
-    //    covariance1.diagonal() << diag;
     return { mean1, covariance1 };
 }
 
@@ -128,14 +106,11 @@ Eigen::Matrix<float, 1, -1> KalmanFilter::gating_distance(const KalmanMeanMatTyp
     KalmanHMeanType  mean1 = pa.hmean;
     KalmanHCovType covariance1 = pa.hconv;
 
-    //    Eigen::Matrix<float, -1, 4, Eigen::RowMajor> d(size, 4);
-    //DETECTBOXSS d(measurements.size(), 4);
     MatAllDetections d(measurements.size(), 4);
     int pos = 0;
     //TODO: investigate to use the detections as th EigenMat
     //      cost of refactoring
     for (const auto &det : measurements) {
-        //MatDetection mat_box({ det.bbox.x, det.bbox.y, det.bbox.width, det.bbox.height });
         d.row(pos++) = det - mean1;
     }
     Eigen::Matrix<float, -1, -1, Eigen::RowMajor> factor = covariance1.llt().matrixL();

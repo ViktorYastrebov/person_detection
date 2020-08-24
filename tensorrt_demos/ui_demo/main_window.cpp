@@ -42,7 +42,7 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
 
         constexpr const float max_cosine_distance = 0.2;
         constexpr const int max_badget = 100;
-        auto tracker = Tracker(max_cosine_distance, max_badget);
+        auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget);
         cv::Mat frame;
 
         while (video_stream.read(frame)) {

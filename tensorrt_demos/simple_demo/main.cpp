@@ -1,14 +1,53 @@
-//#include "generic_detector.h"
 #include "yolov3_model.h"
 #include "yolov5_model.h"
 #include "deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
+#include "sort_tracker/trackers_pool.h"
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <filesystem>
 
-int main(int argc, char *argv[]) {
+
+void sort_tracking(int argc, char*argv[]) {
+    try {
+        std::string model_path(argv[1]);
+        std::string file_name(argv[2]);
+
+        cv::VideoCapture video_stream(file_name);
+        auto detector = std::make_unique<detector::YoloV3SPPModel>(model_path);
+        auto tracker = sort_tracker::TrackersPool(10);
+
+        cv::Mat frame;
+        while (video_stream.read(frame)) {
+            auto start = std::chrono::system_clock::now();
+            auto detections = detector->inference(frame, 0.3f, 0.5f);
+
+            //auto rets = tracker.update(detections);
+            tracker.update(detections);
+            for (const auto &track : tracker.getTracks()) {
+                auto bbox = track.getState();
+                cv::Rect cv_rect(bbox(0), bbox(1), bbox(2), bbox(3));
+                cv::rectangle(frame, cv_rect, cv::Scalar(0, 0, 255), 2);
+                std::string str_id = std::to_string(track.getID());
+                cv::putText(frame, str_id, cv::Point(cv_rect.x, cv_rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+            }
+            cv::imshow("result", frame);
+            int key = cv::waitKey(1);
+            if (key == 27) {
+                break;
+            }
+        }
+    } catch (const std::exception &ex) {
+        std::cout << "Error occured: " << ex.what() << std::endl;
+    } catch (...) {
+        std::cout << "Unhandled exception" << std::endl;
+    }
+}
+
+
+void deep_sort_tracking(int argc, char*argv[]) {
+    // "d:\viktor_project\person_detection\tensorrt_demos\build\Debug\yolov3-spp.engine" "d:\viktor_project\test_data\videos\People - 6387.mp4" "d:\viktor_project\person_detection\tensorrt_demos\build\Release\deep_sort_32.engine"
     try {
         std::string model_path(argv[1]);
 
@@ -21,12 +60,12 @@ int main(int argc, char *argv[]) {
 
         constexpr const float max_cosine_distance = 0.2;
         constexpr const int max_badget = 100;
-        auto tracker = Tracker(max_cosine_distance, max_badget);
+        auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget);
         cv::Mat frame;
         while (video_stream.read(frame)) {
             auto start = std::chrono::system_clock::now();
             auto detections = detector->inference(frame, 0.3f, 0.5f);
-            
+
             auto features = deep_sort->getFeatures(frame, detections);
             tracker.predict();
             tracker.update(features);
@@ -56,11 +95,18 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
-    } catch (const std::exception &ex) {
+    }
+    catch (const std::exception &ex) {
         std::cout << "Error occured: " << ex.what() << std::endl;
     }
     catch (...) {
         std::cout << "Unhandled exception" << std::endl;
     }
+}
+
+
+int main(int argc, char *argv[]) {
+    sort_tracking(argc, argv);
+    //deep_sort_tracking(argc, argv);
     return 0;
 }
