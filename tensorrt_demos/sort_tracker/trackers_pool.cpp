@@ -1,22 +1,12 @@
 #include "trackers_pool.h"
 
-#include "Hungarian.h"
-#include <set>
+#include "common/hungarian_eigen/munkres/munkres.h"
+#include <numeric>
 
-namespace tracker {
+namespace sort_tracker {
 
     using namespace common::datatypes;
-
     namespace helpers {
-        double GetIOU(const cv::Rect &bb_test, const cv::Rect &bb_gt) {
-            float in = static_cast<float>((bb_test & bb_gt).area());
-            float un = bb_test.area() + bb_gt.area() - in;
-            //TODO: check for close function
-            if (un < DBL_EPSILON)
-                return 0.0;
-            return (double)(in / un);
-        }
-
         double iou(const DetectionBox &lbox, const DetectionBox &rbox) {
             float interBox[] = {
                 std::max(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f), //left
@@ -26,10 +16,32 @@ namespace tracker {
             };
 
             if (interBox[2] > interBox[3] || interBox[0] > interBox[1])
-                return 0.0f;
+                return 0.0;
 
             float interBoxS = (interBox[1] - interBox[0])*(interBox[3] - interBox[2]);
             return interBoxS / (lbox[2] * lbox[3] + rbox[2] * rbox[3] - interBoxS);
+        }
+
+        Eigen::Matrix<float, -1, 2, Eigen::RowMajor> solve(Matrix<double> &matrix) {
+            Munkres<double> m;
+            m.solve(matrix);
+
+            std::vector<std::pair<int, int>> pairs;
+            for (int row = 0; row < matrix.rows(); row++) {
+                for (int col = 0; col < matrix.columns(); col++) {
+                    int tmp = static_cast<int>(matrix(row, col));
+                    if (tmp == 0) {
+                        pairs.push_back(std::make_pair(row, col));
+                    }
+                }
+            }
+            int count = pairs.size();
+            Eigen::Matrix<float, -1, 2, Eigen::RowMajor> re(count, 2);
+            for (int i = 0; i < count; i++) {
+                re(i, 0) = pairs[i].first;
+                re(i, 1) = pairs[i].second;
+            }
+            return re;
         }
     }
 
@@ -37,122 +49,122 @@ namespace tracker {
         :initialized_(false)
         , max_age_(max_age)
         , min_hits_(min_hits)
-    {}
+    {
+    }
 
-    std::vector<TrackResult> TrackersPool::update(const common::datatypes::DetectionResults &detections) {
+    TrackerMatch TrackersPool::process_match(const std::vector<DetectionBox> &predicted, const DetectionResults &detections) {
+
+        int rows = static_cast<int>(predicted.size());
+        int cols = static_cast<int>(detections.size());
+
+        std::vector<int> detection_idxs(detections.size());
+        std::iota(detection_idxs.begin(), detection_idxs.end(), 0);
+        std::vector<int> track_idxs(predicted.size());
+        std::iota(track_idxs.begin(), track_idxs.end(), 0);
+
+
+        TrackerMatch res;
+        Matrix<double> matrix(rows, cols);
+        for (unsigned int i = 0; i < rows; ++i) {
+            for (unsigned int j = 0; j < cols; ++j) {
+                matrix(i, j) = 1.0 - helpers::iou(predicted[i], detections[j].bbox);
+            }
+        }
+        Matrix<double> orig = matrix;
+
+        auto indices = helpers::solve(matrix);
+
+        for (size_t col = 0; col < detection_idxs.size(); col++) {
+            bool flag = false;
+            for (int i = 0; i < indices.rows(); i++)
+                if (indices(i, 1) == col) {
+                    flag = true;
+                    break;
+                }
+            if (!flag) {
+                res.unmatched_detections.push_back(detection_idxs[col]);
+            }
+        }
+
+        for (size_t row = 0; row < track_idxs.size(); row++) {
+            bool flag = false;
+            for (int i = 0; i < indices.rows(); i++)
+                if (indices(i, 0) == row) {
+                    flag = true;
+                    break;
+                }
+            if (!flag) {
+                res.unmatched_tracks.push_back(track_idxs[row]);
+            }
+        }
+
+        for (int i = 0; i < indices.rows(); i++) {
+            int row = indices(i, 0);
+            int col = indices(i, 1);
+
+            int track_idx = track_idxs[row];
+            int detection_idx = detection_idxs[col];
+            double process = 1.0 - orig(row, col);
+            if(process < iou_threshold_)
+            {
+                res.unmatched_tracks.push_back(track_idx);
+                res.unmatched_detections.push_back(detection_idx);
+            } else {
+                res.matches.push_back(std::make_pair(track_idx, detection_idx));
+            }
+        }
+        return res;
+    }
+
+    std::vector< TrackResult > TrackersPool::update(const DetectionResults& detections) {
         ++frame_counter_;
 
         if (!initialized_) {
             std::vector<TrackResult> out;
             for (const auto &detection : detections) {
-                //INFO: test
+                trackers_.push_back(SortTracker(detection.bbox, detection.class_id));
                 cv::Rect cv_rect(detection.bbox(0), detection.bbox(1), detection.bbox(2), detection.bbox(3));
-                trackers_.push_back(KalmanTracker(detection.bbox, detection.class_id));
                 out.push_back({ cv_rect, trackers_.back().getID(), detection.class_id });
             }
             initialized_ = true;
             return out;
         }
 
-        //std::vector<cv::Rect> predicted_boxes;
         std::vector<DetectionBox> predicted_boxes;
         for (auto it = trackers_.begin(); it != trackers_.end();)
         {
-            //cv::Rect pBox = (*it).predict();
-            //if (pBox.x >= 0 && pBox.y >= 0) {
-            //INFO: test
-            auto rect = (*it).predict();
-            if(rect(0) >= 0.0f && rect(1) >= 0.0f) {
-                //predicted_boxes.push_back(pBox);
-                predicted_boxes.push_back(rect);
+            DetectionBox pBox = (*it).predict();
+            if (pBox(0) >= 0.0f && pBox(1) >= 0.0f) {
+                predicted_boxes.push_back(pBox);
                 ++it;
             } else {
                 it = trackers_.erase(it);
             }
         }
-        std::size_t n_predicted = predicted_boxes.size();
-        std::size_t n_detected = detections.size();
 
-        std::vector<std::vector<double>> iouMatrix(n_predicted, std::vector<double>(n_detected, 0));
+        TrackerMatch res = process_match(predicted_boxes, detections);
+        std::vector<MatchData>& matches = res.matches;
 
-
-        for (unsigned int i = 0; i < n_predicted; i++) // compute iou matrix as a distance matrix
-        {
-            for (unsigned int j = 0; j < n_detected; j++)
-            {
-                iouMatrix[i][j] = 1.0 - helpers::iou(predicted_boxes[i], detections[j].bbox);
-            }
+        for (MatchData& data : matches) {
+            int track_idx = data.first;
+            int detection_idx = data.second;
+            trackers_[track_idx].update(detections[detection_idx].bbox);
         }
 
-        // solve the assignment problem using hungarian algorithm.
-        // the resulting assignment is [track(prediction) : detection], with len=preNum
-        HungarianAlgorithm HungAlgo;
-        std::vector<int> assignment;
-        HungAlgo.Solve(iouMatrix, assignment);
+        //std::vector<int>& unmatched_tracks = res.unmatched_tracks;
+        //for (int& track_idx : unmatched_tracks) {
+        //    trackers_[track_idx].markMissed(max_age_);
+        //}
 
-        std::set<int> allItems;
-        std::set<int> matchedItems;
-        std::set<int> unmatchedDetections;
-        std::set<int> unmatchedTrajectories;
-        std::vector<cv::Point> matchedPairs;
 
-        // INFO: there are unmatched detections
-        if (n_detected > n_predicted) {
-            for (unsigned int n = 0; n < n_detected; ++n) {
-                allItems.insert(n);
-            }
-
-            for (unsigned int i = 0; i < n_predicted; ++i) {
-                matchedItems.insert(assignment[i]);
-            }
-
-            set_difference(allItems.begin(), allItems.end(), matchedItems.begin(), matchedItems.end(),
-                            std::insert_iterator<std::set<int>>(unmatchedDetections, unmatchedDetections.begin()));
-        } else {
-            // there are unmatched trajectory/predictions
-            if (n_detected < n_predicted) {
-                for (unsigned int i = 0; i < n_predicted; ++i) {
-                    // unassigned label will be set as -1 in the assignment algorithm
-                    if (assignment[i] == -1) {
-                        unmatchedTrajectories.insert(i);
-                    }
-                }
-            }
-        }
-
-        for (unsigned int i = 0; i < n_predicted; ++i) {
-            // pass over invalid values
-            if (assignment[i] == -1) {
-                continue;
-            }
-            if (1 - iouMatrix[i][assignment[i]] < iou_threshold_) {
-                unmatchedTrajectories.insert(i);
-                unmatchedDetections.insert(assignment[i]);
-            } else {
-                matchedPairs.push_back(cv::Point(i, assignment[i]));
-            }
-        }
-
-        int detIdx, trkIdx;
-        for (unsigned int i = 0; i < matchedPairs.size(); ++i) {
-            trkIdx = matchedPairs[i].x;
-            detIdx = matchedPairs[i].y;
-            //INFO: test
-            cv::Rect cv_rect(detections[detIdx].bbox(0), detections[detIdx].bbox(1), detections[detIdx].bbox(2), detections[detIdx].bbox(3));
-            trackers_[trkIdx].update(cv_rect);
-        }
-
-        // create and initialise new trackers for unmatched detections
-        for (auto umd : unmatchedDetections) {
-            //KalmanTracker tracker = KalmanTracker(detections[umd]);
-            //trackers.push_back(tracker);
-            trackers_.push_back(KalmanTracker(detections[umd].bbox, detections[umd].class_id));
+        std::vector<int>& unmatched_detections = res.unmatched_detections;
+        for (int& detection_idx : unmatched_detections) {
+            trackers_.push_back(SortTracker(detections[detection_idx].bbox, detections[detection_idx].class_id));
         }
 
         std::vector< TrackResult > results;
         for (auto it = trackers_.begin(); it != trackers_.end();) {
             if (((*it).getTimeSinceUpdate() < 1) && (it->getHitSteak() >= min_hits_ || frame_counter_ <= min_hits_)) {
-                //INFO: test
                 auto rect = it->getState();
                 cv::Rect cv_rect(rect(0), rect(1), rect(2), rect(3));
                 results.push_back({ cv_rect , it->getID(), it->getClassID() });
@@ -168,4 +180,7 @@ namespace tracker {
         return results;
     }
 
+    const std::vector<SortTracker> &TrackersPool::getTracks() const {
+        return trackers_;
+    }
 }

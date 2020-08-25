@@ -16,7 +16,7 @@ void sort_tracking(int argc, char*argv[]) {
 
         cv::VideoCapture video_stream(file_name);
         auto detector = std::make_unique<detector::YoloV3SPPModel>(model_path);
-        auto tracker = tracker::TrackersPool(10);
+        auto tracker = sort_tracker::TrackersPool(10);
 
         cv::Mat frame;
         while (video_stream.read(frame)) {
@@ -24,8 +24,9 @@ void sort_tracking(int argc, char*argv[]) {
             auto detections = detector->inference(frame, 0.3f, 0.5f);
 
             auto rets = tracker.update(detections);
+            //tracker.update(detections);
             for (const auto &track : rets) {
-                //auto bbox = track.getState();
+                //cv::Rect cv_rect(bbox(0), bbox(1), bbox(2), bbox(3));
                 cv::rectangle(frame, track.bbox, cv::Scalar(0, 0, 255), 2);
                 std::string str_id = std::to_string(track.id);
                 cv::putText(frame, str_id, cv::Point(track.bbox.x, track.bbox.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
@@ -45,6 +46,7 @@ void sort_tracking(int argc, char*argv[]) {
 
 
 void deep_sort_tracking(int argc, char*argv[]) {
+    // "d:\viktor_project\person_detection\tensorrt_demos\build\Debug\yolov3-spp.engine" "d:\viktor_project\test_data\videos\People - 6387.mp4" "d:\viktor_project\person_detection\tensorrt_demos\build\Release\deep_sort_32.engine"
     try {
         std::string model_path(argv[1]);
 

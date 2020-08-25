@@ -3,16 +3,16 @@
 #include <array>
 #include <iostream>
 
-namespace tracker {
+namespace sort_tracker {
+
     using namespace common::datatypes;
 
-    inline std::array<float, KalmanTracker::MEASUREMENT_SIZE> convert_bound_box_to_z(const cv::Rect &bbox) {
-        auto x = static_cast<float>(bbox.x) + static_cast<float>(bbox.width) / 2;
-        auto y = static_cast<float>(bbox.y) + static_cast<float>(bbox.height) / 2;
-        // INFO: scale is just area
-        auto s = static_cast<float>(bbox.area());
-        auto r = bbox.width / static_cast<float>(bbox.height);
-        return {x,y,s,r};
+    inline std::array<float, SortTracker::MEASUREMENT_SIZE> convert_bound_box_to_z(const DetectionBox &bbox) {
+        auto x = bbox(0) + bbox(2) / 2;
+        auto y = bbox(1) + bbox(3) / 2;
+        auto s = bbox(2)*bbox(3);
+        auto r = bbox(2) / bbox(3);
+        return { x,y,s,r };
     }
 
     inline DetectionBox convert_xysr_to_bbox(float cx, float cy, float s, float r) {
@@ -25,15 +25,12 @@ namespace tracker {
             x = 0;
         if (y < 0 && cy > 0)
             y = 0;
-        //TODO: add round
         return DetectionBox(x, y, w, h);
-        //return cv::Rect(static_cast<int>(x), static_cast<int>(y), static_cast<int>(w), static_cast<int>(h));
     }
 
-    int KalmanTracker::ID_COUNTER = 0;
+    int SortTracker::ID_COUNTER = 0;
 
-    //KalmanTracker::KalmanTracker(const cv::Rect &bbox, const int class_id)
-    KalmanTracker::KalmanTracker(const DetectionBox &bbox, const int class_id)
+    SortTracker::SortTracker(const DetectionBox &bbox, const int class_id)
         :filter_(STATE_SIZE, MEASUREMENT_SIZE)
         , class_id_(class_id)
         , id_(ID_COUNTER++)
@@ -60,9 +57,7 @@ namespace tracker {
         filter_.errorCovPost.at<float>(5, 5) *= 1000;
         filter_.errorCovPost.at<float>(6, 6) *= 1000;
 
-        //INFO: test
-        cv::Rect cv_rect(bbox(0), bbox(1), bbox(2), bbox(3));
-        auto bbox_z = convert_bound_box_to_z(cv_rect);
+        auto bbox_z = convert_bound_box_to_z(bbox);
         for (int i = 0; i < MEASUREMENT_SIZE; ++i) {
             filter_.statePost.at<float>(i) = bbox_z[i];
         }
@@ -70,7 +65,7 @@ namespace tracker {
 
     }
 
-    void KalmanTracker::update(const cv::Rect &bbox) {
+    void SortTracker::update(const common::datatypes::DetectionBox &bbox) {
         time_since_update_ = 0;
         history_.clear();
         ++hits_;
@@ -85,9 +80,7 @@ namespace tracker {
         filter_.correct(mesurements_);
     }
 
-    //cv::Rect KalmanTracker::predict() {
-    DetectionBox KalmanTracker::predict() {
-
+    common::datatypes::DetectionBox SortTracker::predict() {
         cv::Mat p = filter_.predict();
         ++age_;
 
@@ -101,25 +94,25 @@ namespace tracker {
         return history_.back();
     }
 
-    //cv::Rect KalmanTracker::getState() const {
-    DetectionBox KalmanTracker::getState() const {
+    common::datatypes::DetectionBox SortTracker::getState() const {
         cv::Mat s = filter_.statePost;
-        return convert_xysr_to_bbox(s.at<float>(0, 0), s.at<float>(1, 0), s.at<float>(2, 0), s.at<float>(3, 0));
+        auto rect = convert_xysr_to_bbox(s.at<float>(0, 0), s.at<float>(1, 0), s.at<float>(2, 0), s.at<float>(3, 0));
+        return rect;
     }
 
-    int KalmanTracker::getTimeSinceUpdate() const {
+    int SortTracker::getTimeSinceUpdate() const {
         return time_since_update_;
     }
 
-    int KalmanTracker::getID() const {
+    int SortTracker::getID() const {
         return id_;
     }
 
-    int KalmanTracker::getHitSteak() const {
+    int SortTracker::getHitSteak() const {
         return hit_streak_;
     }
 
-    int KalmanTracker::getClassID() const {
+    int SortTracker::getClassID() const {
         return class_id_;
     }
 }
