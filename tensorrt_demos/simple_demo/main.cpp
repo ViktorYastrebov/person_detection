@@ -23,14 +23,13 @@ void sort_tracking(int argc, char*argv[]) {
             auto start = std::chrono::system_clock::now();
             auto detections = detector->inference(frame, 0.3f, 0.5f);
 
-            //auto rets = tracker.update(detections);
-            tracker.update(detections);
-            for (const auto &track : tracker.getTracks()) {
-                auto bbox = track.getState();
-                cv::Rect cv_rect(bbox(0), bbox(1), bbox(2), bbox(3));
-                cv::rectangle(frame, cv_rect, cv::Scalar(0, 0, 255), 2);
-                std::string str_id = std::to_string(track.getID());
-                cv::putText(frame, str_id, cv::Point(cv_rect.x, cv_rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+            auto rets = tracker.update(detections);
+            //tracker.update(detections);
+            for (const auto &track : rets) {
+                //cv::Rect cv_rect(bbox(0), bbox(1), bbox(2), bbox(3));
+                cv::rectangle(frame, track.bbox, cv::Scalar(0, 0, 255), 2);
+                std::string str_id = std::to_string(track.id);
+                cv::putText(frame, str_id, cv::Point(track.bbox.x, track.bbox.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
             }
             cv::imshow("result", frame);
             int key = cv::waitKey(1);

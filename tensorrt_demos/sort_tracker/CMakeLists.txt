@@ -11,8 +11,6 @@ set(SOURCE_FILES
 		"kalman_tracker.cpp"
 		"trackers_pool.h"
 		"trackers_pool.cpp"
-		"Hungarian.h"
-		"Hungarian.cpp"
 	)
 
 add_library(sort_tracker SHARED ${SOURCE_FILES})
