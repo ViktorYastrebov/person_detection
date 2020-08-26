@@ -46,6 +46,7 @@ All models are pretrained and can be downloaded from the
 	   Build the project and copy wieghts file to the output folder <br>
 	   Run yolov5_builder: `yolov5_builder.exe -s  "path_to_weight_file"`<br>
 	   There should be generated the yolov5\*.engine file
+	   > For more information visit [YoloV5](https://github.com/wang-xinyu/tensorrtx/tree/master/yolov5)
    
 ## Generate DeepSort model
 

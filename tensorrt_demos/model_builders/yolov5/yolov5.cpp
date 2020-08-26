@@ -4,7 +4,6 @@
 #include "common/logging.h"
 #include "common.hpp"
 
-#define USE_FP16  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
 #define NMS_THRESH 0.4
 #define CONF_THRESH 0.5
@@ -508,8 +507,6 @@ int main(int argc, char** argv) {
     char *trtModelStream{nullptr};
     size_t size{0};
 
-    //std::string engine_name = STR2(NET);
-    //engine_name = "yolov5" + engine_name + ".engine";
     if (argc > 1 && std::string(argv[1]) == "-s") {
         bool use_float16 = true;
         std::string weights_path;
@@ -555,7 +552,7 @@ int main(int argc, char** argv) {
     }
 
     std::vector<std::string> file_names;
-    if (read_files_in_dir(argv[2], file_names) < 0) {
+    if (read_files_in_dir(argv[3], file_names) < 0) {
         std::cout << "read_files_in_dir failed." << std::endl;
         return -1;
     }
@@ -578,8 +575,10 @@ int main(int argc, char** argv) {
         fcount++;
         if (fcount < BATCH_SIZE && f + 1 != (int)file_names.size()) continue;
         for (int b = 0; b < fcount; b++) {
-            cv::Mat img = cv::imread(std::string(argv[2]) + "/" + file_names[f - fcount + 1 + b]);
-            if (img.empty()) continue;
+            cv::Mat img = cv::imread(std::string(argv[3]) + "/" + file_names[f - fcount + 1 + b]);
+            if (img.empty()) {
+                continue;
+            }
             cv::Mat pr_img = preprocess_img(img); // letterbox BGR to RGB
             int i = 0;
             for (int row = 0; row < INPUT_H; ++row) {
@@ -607,7 +606,7 @@ int main(int argc, char** argv) {
         for (int b = 0; b < fcount; b++) {
             auto& res = batch_res[b];
             //std::cout << res.size() << std::endl;
-            cv::Mat img = cv::imread(std::string(argv[2]) + "/" + file_names[f - fcount + 1 + b]);
+            cv::Mat img = cv::imread(std::string(argv[3]) + "/" + file_names[f - fcount + 1 + b]);
             for (size_t j = 0; j < res.size(); j++) {
                 cv::Rect r = get_rect(img, res[j].bbox);
                 cv::rectangle(img, r, cv::Scalar(0x27, 0xC1, 0x36), 2);

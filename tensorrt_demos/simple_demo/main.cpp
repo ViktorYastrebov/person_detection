@@ -7,13 +7,21 @@
 #include <iostream>
 #include <filesystem>
 
+detector::MODEL_TYPE getByExtention(const std::string &model_file) {
+    auto fn = std::filesystem::path(model_file).filename().string();
+    if (fn.find("yolov3-spp") == 0) {
+        return detector::YoloV3SPP;
+    } else if (fn.find("yolov5") == 0) {
+        return detector::YoloV5;
+    }
+    throw std::runtime_error("Wron model");
+}
 
 void sort_tracking(const std::string &model_path, const std::string &file_name) {
     try {
         cv::VideoCapture video_stream(file_name);
-        auto detector = detector::build(detector::YoloV3SPP, model_path);
+        auto detector = detector::build(getByExtention(model_path), model_path);
         auto tracker = sort_tracker::TrackersPool(10);
-
         cv::Mat frame;
         while (video_stream.read(frame)) {
             auto start = std::chrono::system_clock::now();
@@ -43,7 +51,7 @@ void deep_sort_tracking(const std::string &model_path, const std::string &file_n
     // "d:\viktor_project\person_detection\tensorrt_demos\build\Debug\yolov3-spp.engine" "d:\viktor_project\test_data\videos\People - 6387.mp4" "d:\viktor_project\person_detection\tensorrt_demos\build\Release\deep_sort_32.engine"
     try {
         cv::VideoCapture video_stream(file_name);
-        auto detector = detector::build(detector::YoloV3SPP, model_path);
+        auto detector = detector::build(getByExtention(model_path), model_path);
         auto deep_sort = std::make_unique<deep_sort_tracker::DeepSort>(deep_sort_model);
 
         constexpr const float max_cosine_distance = 0.2f;
