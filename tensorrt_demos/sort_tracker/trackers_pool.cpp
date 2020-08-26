@@ -1,6 +1,5 @@
 #include "trackers_pool.h"
-
-#include "common/hungarian_eigen/munkres/munkres.h"
+#include "common/hungarian_eigen/hungarian.h"
 #include <numeric>
 
 namespace sort_tracker {
@@ -21,28 +20,6 @@ namespace sort_tracker {
             float interBoxS = (interBox[1] - interBox[0])*(interBox[3] - interBox[2]);
             return interBoxS / (lbox[2] * lbox[3] + rbox[2] * rbox[3] - interBoxS);
         }
-
-        Eigen::Matrix<float, -1, 2, Eigen::RowMajor> solve(Matrix<double> &matrix) {
-            Munkres<double> m;
-            m.solve(matrix);
-
-            std::vector<std::pair<int, int>> pairs;
-            for (int row = 0; row < matrix.rows(); row++) {
-                for (int col = 0; col < matrix.columns(); col++) {
-                    int tmp = static_cast<int>(matrix(row, col));
-                    if (tmp == 0) {
-                        pairs.push_back(std::make_pair(row, col));
-                    }
-                }
-            }
-            int count = pairs.size();
-            Eigen::Matrix<float, -1, 2, Eigen::RowMajor> re(count, 2);
-            for (int i = 0; i < count; i++) {
-                re(i, 0) = pairs[i].first;
-                re(i, 1) = pairs[i].second;
-            }
-            return re;
-        }
     }
 
     TrackersPool::TrackersPool(int max_age, int min_hits)
@@ -62,6 +39,13 @@ namespace sort_tracker {
         std::vector<int> track_idxs(predicted.size());
         std::iota(track_idxs.begin(), track_idxs.end(), 0);
 
+        //INFO: return unmatched all for empty values
+        if ((detection_idxs.size() == 0) || (track_idxs.size() == 0)) {
+            TrackerMatch res;
+            res.unmatched_tracks.assign(track_idxs.begin(), track_idxs.end());
+            res.unmatched_detections.assign(detection_idxs.begin(), detection_idxs.end());
+            return res;
+        }
 
         TrackerMatch res;
         Matrix<double> matrix(rows, cols);
@@ -72,7 +56,8 @@ namespace sort_tracker {
         }
         Matrix<double> orig = matrix;
 
-        auto indices = helpers::solve(matrix);
+        //auto indices = helpers::solve(matrix);
+        auto indices = hungarian::solve(matrix);
 
         for (size_t col = 0; col < detection_idxs.size(); col++) {
             bool flag = false;

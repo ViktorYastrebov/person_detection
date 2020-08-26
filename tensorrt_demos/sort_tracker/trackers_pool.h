@@ -20,15 +20,12 @@ namespace sort_tracker {
         TrackersPool(int max_age = 1, int min_hits = 3);
         ~TrackersPool() = default;
 
-        //std::vector<TrackResult> update(const std::vector<DetectionResult> &detections);
-       //std::vector<TrackResult>  update(const common::datatypes::DetectionResults &detections);
         std::vector< TrackResult > update(const common::datatypes::DetectionResults& detections);
 
        const std::vector<SortTracker> &getTracks() const;
 
     private:
         common::datatypes::TrackerMatch process_match(const std::vector<common::datatypes::DetectionBox> &predicted, const common::datatypes::DetectionResults &detections);
-        //std::vector<TrackResult> process_match(const std::vector<common::datatypes::DetectionBox> &predicted, const common::datatypes::DetectionResults &detections);
     private:
         bool initialized_;
         int max_age_;

@@ -5,6 +5,10 @@
 #include "kalman_filter.h"
 
 namespace deep_sort {
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
+
     class DEEP_SORT_TRACKER Track
     {
     public:
@@ -45,4 +49,5 @@ namespace deep_sort {
     private:
         void featuresAppendOne(const common::datatypes::Feature& feature);
     };
+#pragma warning(pop)
 }

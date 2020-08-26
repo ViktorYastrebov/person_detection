@@ -19,6 +19,14 @@ namespace detector {
         virtual common::datatypes::DetectionResults inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) = 0;
     };
 
+//INFO: can be implemented by Pimpl Idiom
+//      class CommonDetector {
+//      private:
+//       struct Pimpl { //methods };
+//       std::unique_ptr<Pimpl> pimpl_;
+//      }
+#pragma warning(push)
+#pragma warning(disable: 4251)
     class ENGINE_DECL CommonDetector : public BaseDetector {
     public:
         virtual ~CommonDetector() = default;
@@ -34,5 +42,6 @@ namespace detector {
         std::unique_ptr<common::DeviceBuffers> device_buffers_;
         cudaStream_t stream_;
     };
+#pragma warning(pop)
 
 }

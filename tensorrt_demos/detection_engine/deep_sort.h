@@ -37,8 +37,6 @@ namespace deep_sort_tracker {
         Logger gLogger_;
         int batch_size_;
         std::vector<char> deserialized_buffer_;
-        //float *input_host_buffer_;
-        //float *output_host_buffer_;
         common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
         common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;
         common::TensorRTUPtr<nvinfer1::IExecutionContext> context_;

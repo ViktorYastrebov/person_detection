@@ -30,12 +30,17 @@ namespace common {
         using TrackerResult = std::pair<int, Features>;
         using DetectionBox = Eigen::Matrix<float, 1, 4, Eigen::RowMajor>;
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         struct COMMON_EXPORT DetectionResult {
             DetectionBox bbox;
             int class_id;
         };
+#pragma warning(pop)
         using DetectionResults = std::vector<DetectionResult>;
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         struct COMMON_EXPORT Detection {
             DetectionBox tlwh;
             Feature feature;
@@ -44,6 +49,7 @@ namespace common {
             DetectionBox to_xyah() const;
             DetectionBox to_tlbr() const;
         };
+#pragma warning(pop)
         using Detections = std::vector<Detection>;
     }
 }

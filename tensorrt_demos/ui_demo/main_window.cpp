@@ -40,7 +40,7 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
         auto feature_extractor = std::make_unique< deep_sort_tracker::DeepSort>(deep_sort_path_);
         auto video_stream = cv::VideoCapture(file_path.string());
 
-        constexpr const float max_cosine_distance = 0.2;
+        constexpr const float max_cosine_distance = 0.2f;
         constexpr const int max_badget = 100;
         auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget);
         cv::Mat frame;

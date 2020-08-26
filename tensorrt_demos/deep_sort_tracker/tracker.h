@@ -6,6 +6,9 @@
 
 namespace deep_sort {
 
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
     class DEEP_SORT_TRACKER Tracker {
     public:
         using DetectionBoxes = Eigen::Matrix<float, -1, 4, Eigen::RowMajor>;
@@ -49,4 +52,5 @@ namespace deep_sort {
         std::unique_ptr<KalmanFilter> kalman_filter;
         std::vector<Track> tracks;
     };
+#pragma warning(pop)
 }

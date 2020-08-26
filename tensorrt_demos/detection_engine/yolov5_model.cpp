@@ -119,8 +119,8 @@ namespace detector {
 
     cv::Mat YoloV5Model::preprocessImage(const cv::Mat &img) {
         int w, h, x, y;
-        float r_w = INPUT_W / (img.cols*1.0);
-        float r_h = INPUT_H / (img.rows*1.0);
+        float r_w = INPUT_W / (img.cols*1.0f);
+        float r_h = INPUT_H / (img.rows*1.0f);
         if (r_h > r_w) {
             w = INPUT_W;
             h = r_w * img.rows;
@@ -153,8 +153,8 @@ namespace detector {
         float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
         yolov5_utils::nms(res, output_host_buffer, conf, nms_thresh);
 
-        float r_w = INPUT_W / (prepared.cols * 1.0);
-        float r_h = INPUT_H / (prepared.rows * 1.0);
+        float r_w = INPUT_W / (prepared.cols * 1.0f);
+        float r_h = INPUT_H / (prepared.rows * 1.0f);
         const int rows = prepared.rows;
         const int cols = prepared.cols;
 

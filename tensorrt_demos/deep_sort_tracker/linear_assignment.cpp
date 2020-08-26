@@ -111,7 +111,7 @@ namespace linear_assignment {
             return res;
         }
 
-        constexpr const float EPSILON = 1e-5;
+        constexpr const float EPSILON = 1e-5f;
         CostMatrixType cost_matrix = (distance_metric->*(metric_function)) (tracks, detections, track_indices, detection_indices);
 
         for (int i = 0; i < cost_matrix.rows(); i++) {
@@ -148,8 +148,8 @@ namespace linear_assignment {
         }
 
         for (int i = 0; i < indices.rows(); i++) {
-            int row = indices(i, 0);
-            int col = indices(i, 1);
+            int row = static_cast<int>(indices(i, 0));
+            int col = static_cast<int>(indices(i, 1));
 
             int track_idx = track_indices[row];
             int detection_idx = detection_indices[col];

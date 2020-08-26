@@ -33,8 +33,6 @@ namespace sort_tracker {
     private:
         static int ID_COUNTER;
     private:
-        //TODO: check with Eigen implementation !!!
-        //      It allows to generalize it
         cv::KalmanFilter filter_;
         cv::Mat mesurements_;
         std::vector<common::datatypes::DetectionBox> history_;

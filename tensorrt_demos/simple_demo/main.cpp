@@ -1,5 +1,4 @@
-#include "yolov3_model.h"
-#include "yolov5_model.h"
+#include "builder.h"
 #include "deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
 #include "sort_tracker/trackers_pool.h"
@@ -9,13 +8,10 @@
 #include <filesystem>
 
 
-void sort_tracking(int argc, char*argv[]) {
+void sort_tracking(const std::string &model_path, const std::string &file_name) {
     try {
-        std::string model_path(argv[1]);
-        std::string file_name(argv[2]);
-
         cv::VideoCapture video_stream(file_name);
-        auto detector = std::make_unique<detector::YoloV3SPPModel>(model_path);
+        auto detector = detector::build(detector::YoloV3SPP, model_path);
         auto tracker = sort_tracker::TrackersPool(10);
 
         cv::Mat frame;
@@ -24,9 +20,7 @@ void sort_tracking(int argc, char*argv[]) {
             auto detections = detector->inference(frame, 0.3f, 0.5f);
 
             auto rets = tracker.update(detections);
-            //tracker.update(detections);
             for (const auto &track : rets) {
-                //cv::Rect cv_rect(bbox(0), bbox(1), bbox(2), bbox(3));
                 cv::rectangle(frame, track.bbox, cv::Scalar(0, 0, 255), 2);
                 std::string str_id = std::to_string(track.id);
                 cv::putText(frame, str_id, cv::Point(track.bbox.x, track.bbox.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
@@ -45,19 +39,14 @@ void sort_tracking(int argc, char*argv[]) {
 }
 
 
-void deep_sort_tracking(int argc, char*argv[]) {
+void deep_sort_tracking(const std::string &model_path, const std::string &file_name, const std::string &deep_sort_model) {
     // "d:\viktor_project\person_detection\tensorrt_demos\build\Debug\yolov3-spp.engine" "d:\viktor_project\test_data\videos\People - 6387.mp4" "d:\viktor_project\person_detection\tensorrt_demos\build\Release\deep_sort_32.engine"
     try {
-        std::string model_path(argv[1]);
-
-        std::string file_name(argv[2]);
-        std::filesystem::path deep_sort_model(argv[3]);
-
         cv::VideoCapture video_stream(file_name);
-        auto detector = std::make_unique<detector::YoloV3SPPModel>(model_path);
+        auto detector = detector::build(detector::YoloV3SPP, model_path);
         auto deep_sort = std::make_unique<deep_sort_tracker::DeepSort>(deep_sort_model);
 
-        constexpr const float max_cosine_distance = 0.2;
+        constexpr const float max_cosine_distance = 0.2f;
         constexpr const int max_badget = 100;
         auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget);
         cv::Mat frame;
@@ -105,7 +94,28 @@ void deep_sort_tracking(int argc, char*argv[]) {
 
 
 int main(int argc, char *argv[]) {
-    sort_tracking(argc, argv);
-    //deep_sort_tracking(argc, argv);
+    if (argc > 2) {
+        std::string type(argv[1]);
+        if (type == "-d") {
+            std::string model_path(argv[2]);
+            std::string file_path(argv[3]);
+            std::string deep_sort_model(argv[4]);
+            deep_sort_tracking(model_path, file_path, deep_sort_model);
+        } else if (type == "-s") {
+            std::string model_path(argv[2]);
+            std::string file_path(argv[3]);
+            sort_tracking(model_path, file_path);
+        } else {
+            std::cout << "Usage : [-d, -s] \"detection_model_path\" \"video_file_path\" [\"deep_sort_model_path\"]" << std::endl;
+            std::cout << "First params determines use SORT(-s option) algo or DEEP SORT(-d option)" << std::endl;
+            std::cout << "\tExample: simple_demo -d \"yolov3.engine\" \"video.mp4\" \"deep_sort_32.engine\"" << std::endl;
+            std::cout << "\tExample: simple_demo -s \"yolov3.engine\" \"video.mp4\"" << std::endl;
+        }
+    } else {
+        std::cout << "Usage : [-d, -s] \"detection_model_path\" \"video_file_path\" [\"deep_sort_model_path\"]" << std::endl;
+        std::cout << "First params determines use SORT(-s option) algo or DEEP SORT(-d option)" << std::endl;
+        std::cout << "\tExample: simple_demo -d \"yolov3.engine\" \"video.mp4\" \"deep_sort_32.engine\"" << std::endl;
+        std::cout << "\tExample: simple_demo -s \"yolov3.engine\" \"video.mp4\"" << std::endl;
+    }
     return 0;
 }

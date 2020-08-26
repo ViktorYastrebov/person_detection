@@ -108,17 +108,17 @@ namespace deep_sort {
     //            detection_indices.push_back(i);
     //        }
     //    }
-        int rows = track_indices.size();
-        int cols = detection_indices.size();
+        size_t rows = track_indices.size();
+        size_t cols = detection_indices.size();
         CostMatrixType cost_matrix = Eigen::MatrixXf::Zero(rows, cols);
-        for (int i = 0; i < rows; i++) {
+        for (size_t i = 0; i < rows; i++) {
             int track_idx = track_indices[i];
             if (tracks[track_idx].time_since_update > 1) {
                 cost_matrix.row(i) = Eigen::RowVectorXf::Constant(cols, INFTY_COST);
                 continue;
             }
             auto bbox = tracks[track_idx].to_tlwh();
-            int csize = detection_indices.size();
+            size_t csize = detection_indices.size();
             DetectionBoxes candidates(csize, 4);
             for (int k = 0; k < csize; k++) {
                 candidates.row(k) = dets[detection_indices[k]].tlwh;

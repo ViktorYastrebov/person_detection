@@ -22,6 +22,8 @@ set(SOURCE_FILES
 	"yolov5_model.cpp"
 	"deep_sort.cpp"
 	"deep_sort.h"
+	"builder.h"
+	"builder.cpp"
 	)
 
 add_library(detection_engine SHARED ${SOURCE_FILES})
