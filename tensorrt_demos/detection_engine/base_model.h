@@ -33,7 +33,7 @@ namespace detector {
         virtual common::datatypes::DetectionResults inference(const cv::Mat &imageRGB, const float confidence, const float nms_threshold) override;
     protected:
         Logger gLogger_;
-        int batch_size_;
+        int batch_size_ = 1;
         std::vector<char> deserialized_buffer_;
         common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
         common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;

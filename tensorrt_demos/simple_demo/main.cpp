@@ -20,7 +20,7 @@ detector::MODEL_TYPE getByExtention(const std::string &model_file) {
 void sort_tracking(const std::string &model_path, const std::string &file_name) {
     try {
         cv::VideoCapture video_stream(file_name);
-        auto detector = detector::build(getByExtention(model_path), model_path);
+        auto detector = detector::build(getByExtention(model_path), model_path, {0});
         auto tracker = sort_tracker::TrackersPool(10);
         cv::Mat frame;
         while (video_stream.read(frame)) {
@@ -51,44 +51,52 @@ void deep_sort_tracking(const std::string &model_path, const std::string &file_n
     // "d:\viktor_project\person_detection\tensorrt_demos\build\Debug\yolov3-spp.engine" "d:\viktor_project\test_data\videos\People - 6387.mp4" "d:\viktor_project\person_detection\tensorrt_demos\build\Release\deep_sort_32.engine"
     try {
         cv::VideoCapture video_stream(file_name);
-        auto detector = detector::build(getByExtention(model_path), model_path);
+        //cv::VideoCapture video_stream("rtsp://admin:Videoanalisi1@5.158.71.164:3010/Streaming/Channels/101");
+        //if (!video_stream.isOpened()) {
+        //    std::cout << "Opening video stream is failed" << std::endl;
+        //    return;
+        //}
+        std::vector<int> persons{ 0 };
+        auto detector = detector::build(getByExtention(model_path), model_path, persons);
         auto deep_sort = std::make_unique<deep_sort_tracker::DeepSort>(deep_sort_model);
 
         constexpr const float max_cosine_distance = 0.2f;
         constexpr const int max_badget = 100;
         auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget);
         cv::Mat frame;
-        while (video_stream.read(frame)) {
-            auto start = std::chrono::system_clock::now();
-            auto detections = detector->inference(frame, 0.3f, 0.5f);
+        while (true) {
+            if (video_stream.read(frame)) {
+                //auto start = std::chrono::system_clock::now();
+                auto detections = detector->inference(frame, 0.3f, 0.5f);
 
-            auto features = deep_sort->getFeatures(frame, detections);
-            tracker.predict();
-            tracker.update(features);
+                auto features = deep_sort->getFeatures(frame, detections);
+                tracker.predict();
+                tracker.update(features);
 
-            auto end = std::chrono::system_clock::now();
-            auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            std::cout << "Frame processing time: " << int_ms.count() << " ms" << std::endl;
+                //auto end = std::chrono::system_clock::now();
+                //auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                //std::cout << "Frame processing time: " << int_ms.count() << " ms" << std::endl;
 
-            for (const auto &track : tracker.getTracks()) {
-                if (!track.is_confirmed() || track.time_since_update > 1) {
-                    continue;
+                for (const auto &track : tracker.getTracks()) {
+                    if (!track.is_confirmed() || track.time_since_update > 1) {
+                        continue;
+                    }
+                    auto bbox = track.to_tlwh();
+                    cv::Rect rect(
+                        static_cast<int>(bbox(0)),
+                        static_cast<int>(bbox(1)),
+                        static_cast<int>(bbox(2)),
+                        static_cast<int>(bbox(3))
+                    );
+                    cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2);
+                    std::string str_id = std::to_string(track.track_id) + ", class ID:" + std::to_string(track.class_id);
+                    cv::putText(frame, str_id, cv::Point(rect.x, rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
                 }
-                auto bbox = track.to_tlwh();
-                cv::Rect rect(
-                    static_cast<int>(bbox(0)),
-                    static_cast<int>(bbox(1)),
-                    static_cast<int>(bbox(2)),
-                    static_cast<int>(bbox(3))
-                );
-                cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2);
-                std::string str_id = std::to_string(track.track_id);
-                cv::putText(frame, str_id, cv::Point(rect.x, rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
-            }
-            cv::imshow("result", frame);
-            int key = cv::waitKey(1);
-            if (key == 27) {
-                break;
+                cv::imshow("result", frame);
+                int key = cv::waitKey(1);
+                if (key == 27) {
+                    break;
+                }
             }
         }
     }

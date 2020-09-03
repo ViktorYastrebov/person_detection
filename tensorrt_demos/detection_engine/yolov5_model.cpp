@@ -32,14 +32,26 @@ namespace detector {
             return a.conf > b.conf;
         }
 
-        void nms(std::vector<YoloV5::Detection>& res, float *output, float conf_thresh, float nms_thresh = 0.5) {
+        void nms(std::vector<YoloV5::Detection>& res, float *output, float conf_thresh, float nms_thresh, const std::vector<int> &filter_classes) {
             int det_size = sizeof(YoloV5::Detection) / sizeof(float);
             std::map<float, std::vector<YoloV5::Detection>> m;
             for (int i = 0; i < output[0] && i < YoloV5::MAX_OUTPUT_BBOX_COUNT; i++) {
-                if (output[1 + det_size * i + 4] <= conf_thresh) continue;
+                if (output[1 + det_size * i + YoloV5::LOCATIONS] <= conf_thresh) {
+                    continue;
+                }
+
+                //INFO: filter class at NMS time
+                int class_id = static_cast<int>(output[2 + det_size * i + YoloV5::LOCATIONS]);
+                auto it = std::find(filter_classes.cbegin(), filter_classes.cend(), class_id);
+                if (it == filter_classes.cend()) {
+                    continue;
+                }
+
                 YoloV5::Detection det;
                 memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));
-                if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<YoloV5::Detection>());
+                if (m.count(det.class_id) == 0) {
+                    m.emplace(det.class_id, std::vector<YoloV5::Detection>());
+                }
                 m[det.class_id].push_back(det);
             }
             for (auto it = m.begin(); it != m.end(); it++) {
@@ -64,7 +76,9 @@ namespace detector {
     using namespace common;
     using namespace YoloV5;
 
-    YoloV5Model::YoloV5Model(const std::filesystem::path &model_path, const int BATCH_SIZE)
+    YoloV5Model::YoloV5Model(const std::filesystem::path &model_path, const std::vector<int> &classes_ids, const int BATCH_SIZE)
+        :CommonDetector()
+        , classes_ids_(classes_ids)
     {
         batch_size_ = BATCH_SIZE;
 
@@ -151,7 +165,7 @@ namespace detector {
     common::datatypes::DetectionResults YoloV5Model::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
         std::vector<YoloV5::Detection> res;
         float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
-        yolov5_utils::nms(res, output_host_buffer, conf, nms_thresh);
+        yolov5_utils::nms(res, output_host_buffer, conf, nms_thresh, classes_ids_);
 
         float r_w = INPUT_W / (prepared.cols * 1.0f);
         float r_h = INPUT_H / (prepared.rows * 1.0f);

@@ -12,5 +12,5 @@ namespace detector {
         YoloV5
     };
 
-    std::unique_ptr<BaseDetector> ENGINE_DECL build(MODEL_TYPE type, const std::filesystem::path &model_path, const int BATCH_SIZE = 1);
+    std::unique_ptr<BaseDetector> ENGINE_DECL build(MODEL_TYPE type, const std::filesystem::path &model_path, const std::vector<int> &classes_ids, const int BATCH_SIZE = 1);
 }

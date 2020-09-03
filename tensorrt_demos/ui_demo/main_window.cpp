@@ -36,7 +36,8 @@ void MainWindow::Process(const std::filesystem::path &video_file) {
 void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
     std::ofstream trace("trace.txt");
     try {
-        auto detector = std::make_unique<detector::YoloV3SPPModel>(detector_path_);
+        std::vector<int> person_class{ 0 };
+        auto detector = std::make_unique<detector::YoloV3SPPModel>(detector_path_, person_class);
         auto feature_extractor = std::make_unique< deep_sort_tracker::DeepSort>(deep_sort_path_);
         auto video_stream = cv::VideoCapture(file_path.string());
 

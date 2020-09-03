@@ -32,17 +32,20 @@ namespace detector {
             return a.det_confidence > b.det_confidence;
         }
 
-        void nms(std::vector<YoloV3SPP::Detection>& res, float *output, const float conf, const float nms_thresh) {
+        void nms(std::vector<YoloV3SPP::Detection>& res, float *output, const float conf, const float nms_thresh, const std::vector<int> &filter_classes) {
             std::map<float, std::vector<YoloV3SPP::Detection>> m;
             for (int i = 0; i < output[0] && i < YoloV3SPP::MAX_OUTPUT_BBOX_COUNT; ++i) {
-                if (output[1 + 7 * i + 4] <= conf) {
+                if (output[1 + 7 * i + YoloV3SPP::LOCATIONS] <= conf) {
                     continue;
                 }
-                //INFO: add correct filtering
-                int class_id = static_cast<int>(output[2 + 7 * i + 4]);
-                if (class_id != 0) {
+
+                //INFO: filter class at NMS time
+                int class_id = static_cast<int>(output[2 + 7 * i + YoloV3SPP::LOCATIONS]);
+                auto it = std::find(filter_classes.cbegin(), filter_classes.cend(), class_id);
+                if (it == filter_classes.cend()) {
                     continue;
                 }
+
                 YoloV3SPP::Detection det;
                 memcpy(&det, &output[1 + 7 * i], 7 * sizeof(float));
                 if (m.count(det.class_id) == 0) {
@@ -71,8 +74,9 @@ namespace detector {
     using namespace common;
     using namespace YoloV3SPP;
 
-    YoloV3SPPModel::YoloV3SPPModel(const std::filesystem::path &model_path, const int BATCH_SIZE)
+    YoloV3SPPModel::YoloV3SPPModel(const std::filesystem::path &model_path, const std::vector<int> &classes_ids, const int BATCH_SIZE)
         :CommonDetector()
+        , classes_ids_(classes_ids)
     {
         batch_size_ = BATCH_SIZE;
 
@@ -160,7 +164,7 @@ namespace detector {
     common::datatypes::DetectionResults YoloV3SPPModel::processResults(const cv::Mat &prepared, const float conf, const float nms_thresh) {
         std::vector<YoloV3SPP::Detection> res;
         float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
-        yolov3_utils::nms(res, output_host_buffer, conf, nms_thresh);
+        yolov3_utils::nms(res, output_host_buffer, conf, nms_thresh, classes_ids_);
 
         float r_w = INPUT_W / (prepared.cols * 1.0);
         float r_h = INPUT_H / (prepared.rows * 1.0);
