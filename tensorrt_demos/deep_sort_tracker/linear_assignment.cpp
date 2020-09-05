@@ -26,7 +26,7 @@ namespace linear_assignment {
         Tracker::MetricFunction metric_function,
         float max_distance,
         int cascade_depth,
-        std::vector<Track>& tracks,
+        std::vector<Tracker::TrackPtr>& tracks,
         const Detections &detections,
         std::vector<int> &track_indices,
         std::vector<int> detection_indices)
@@ -55,7 +55,7 @@ namespace linear_assignment {
 
             track_indices_l.clear();
             for (int k : track_indices) {
-                if (tracks[k].time_since_update == 1 + level)
+                if (tracks[k]->time_since_update == 1 + level)
                     track_indices_l.push_back(k);
             }
             if (track_indices_l.size() == 0) continue; //Nothing to match at this level.
@@ -87,7 +87,7 @@ namespace linear_assignment {
         Tracker* distance_metric,
         Tracker::MetricFunction metric_function,
         float max_distance,
-        std::vector<Track>& tracks,
+        std::vector<Tracker::TrackPtr>& tracks,
         const Detections &detections,
         std::vector<int>& track_indices,
         std::vector<int>& detection_indices)
@@ -166,7 +166,7 @@ namespace linear_assignment {
     CostMatrixType gate_cost_matrix(
         KalmanFilter* kf,
         CostMatrixType &costMat,
-        std::vector<Track>& tracks,
+        std::vector<Tracker::TrackPtr>& tracks,
         const Detections &detections,
         const std::vector<int>& track_indices,
         const std::vector<int>& detection_indices,
@@ -181,8 +181,8 @@ namespace linear_assignment {
         }
 
         for (size_t i = 0; i < track_indices.size(); i++) {
-            Track& track = tracks[track_indices[i]];
-            Eigen::Matrix<float, 1, -1> gating_distance = kf->gating_distance(track.mean, track.covariance, measurements, only_position);
+            Tracker::TrackPtr track = tracks[track_indices[i]];
+            Eigen::Matrix<float, 1, -1> gating_distance = kf->gating_distance(track->mean, track->covariance, measurements, only_position);
             for (int j = 0; j < gating_distance.cols(); j++) {
                 if (gating_distance(0, j) > gating_threshold) {
                     costMat(i, j) = gated_cost;

@@ -17,11 +17,20 @@ namespace deep_sort {
         , _next_idx(1)
         , kalman_filter(std::make_unique<KalmanFilter>())
         , tracks()
-    {}
+    {
+        build_func_ = std::bind(&Tracker::initialize_track, this,
+                                std::placeholders::_1,
+                                std::placeholders::_2,
+                                std::placeholders::_3,
+                                std::placeholders::_4,
+                                std::placeholders::_5,
+                                std::placeholders::_6,
+                                std::placeholders::_7);
+    }
 
     void Tracker::predict() {
-        for (Track& track : tracks) {
-            track.predit(*kalman_filter);
+        for (TrackPtr track : tracks) {
+            track->predit(*kalman_filter);
         }
     }
 
@@ -34,19 +43,19 @@ namespace deep_sort {
         for (MatchData& data : matches) {
             int track_idx = data.first;
             int detection_idx = data.second;
-            tracks[track_idx].update(*kalman_filter, detections[detection_idx]);
+            tracks[track_idx]->update(*kalman_filter, detections[detection_idx]);
         }
         std::vector<int>& unmatched_tracks = res.unmatched_tracks;
         for (int& track_idx : unmatched_tracks) {
-            this->tracks[track_idx].mark_missed();
+            this->tracks[track_idx]->mark_missed();
         }
         std::vector<int>& unmatched_detections = res.unmatched_detections;
         for (int& detection_idx : unmatched_detections) {
             initiate_track(detections[detection_idx]);
         }
-        std::vector<Track>::iterator it = tracks.begin();
+        std::vector<TrackPtr>::iterator it = tracks.begin();
         for (it; it != tracks.end();) {
-            if ((*it).is_deleted()) {
+            if ((*it)->is_deleted()) {
                 it = tracks.erase(it);
             } else {
                 ++it;
@@ -54,21 +63,21 @@ namespace deep_sort {
         }
         std::vector<int> active_targets;
         std::vector<TrackerResult> tid_features;
-        for (Track& track : tracks) {
-            if (!track.is_confirmed()) {
+        for (TrackPtr track : tracks) {
+            if (!track->is_confirmed()) {
                 continue;
             }
-            active_targets.push_back(track.track_id);
-            tid_features.push_back(std::make_pair(track.track_id, track.features));
+            active_targets.push_back(track->track_id);
+            tid_features.push_back(std::make_pair(track->track_id, track->features));
             Features t = Features(0, FEATURES_SIZE);
-            track.features = t;
+            track->features = t;
         }
         metric_processor->partial_fit(tid_features, active_targets);
     }
 
 
     CostMatrixType Tracker::gated_metric(
-        std::vector<Track>& tracks,
+        std::vector<TrackPtr>& tracks,
         const common::datatypes::Detections& dets,
         const std::vector<int>& track_indices,
         const std::vector<int>& detection_indices
@@ -82,7 +91,7 @@ namespace deep_sort {
 
         std::vector<int> targets;
         for (int i : track_indices) {
-            targets.push_back(tracks[i].track_id);
+            targets.push_back(tracks[i]->track_id);
         }
         CostMatrixType cost_matrix = metric_processor->distance(features, targets);
 
@@ -91,7 +100,7 @@ namespace deep_sort {
     }
 
     CostMatrixType Tracker::iou_cost(
-        std::vector<Track>& tracks,
+        std::vector<TrackPtr>& tracks,
         const Detections& dets,
         const std::vector<int>& track_indices,
         const std::vector<int>& detection_indices)
@@ -113,11 +122,11 @@ namespace deep_sort {
         CostMatrixType cost_matrix = Eigen::MatrixXf::Zero(rows, cols);
         for (size_t i = 0; i < rows; i++) {
             int track_idx = track_indices[i];
-            if (tracks[track_idx].time_since_update > 1) {
+            if (tracks[track_idx]->time_since_update > 1) {
                 cost_matrix.row(i) = Eigen::RowVectorXf::Constant(cols, INFTY_COST);
                 continue;
             }
-            auto bbox = tracks[track_idx].to_tlwh();
+            auto bbox = tracks[track_idx]->to_tlwh();
             size_t csize = detection_indices.size();
             DetectionBoxes candidates(csize, 4);
             for (int k = 0; k < csize; k++) {
@@ -163,9 +172,12 @@ namespace deep_sort {
         std::vector<int> confirmed_tracks;
         std::vector<int> unconfirmed_tracks;
         int idx = 0;
-        for (Track& t : tracks) {
-            if (t.is_confirmed()) confirmed_tracks.push_back(idx);
-            else unconfirmed_tracks.push_back(idx);
+        for (TrackPtr t : tracks) {
+            if (t->is_confirmed()) {
+                confirmed_tracks.push_back(idx);
+            } else {
+                unconfirmed_tracks.push_back(idx);
+            }
             idx++;
         }
 
@@ -183,7 +195,7 @@ namespace deep_sort {
         std::vector<int>::iterator it;
         for (it = matcha.unmatched_tracks.begin(); it != matcha.unmatched_tracks.end();) {
             int idx = *it;
-            if (tracks[idx].time_since_update == 1) { //push into unconfirmed
+            if (tracks[idx]->time_since_update == 1) { //push into unconfirmed
                 iou_track_candidates.push_back(idx);
                 it = matcha.unmatched_tracks.erase(it);
                 continue;
@@ -214,16 +226,22 @@ namespace deep_sort {
             matchb.unmatched_detections.end());
     }
 
+    Tracker::TrackPtr Tracker::initialize_track(const KalmanMeanMatType &mean, const KalmanCovAMatType &covariance, int track_id, int n_init, int max_age, const Feature &feature, const int class_id) {
+        return std::shared_ptr<Track>(new Track(mean, covariance, _next_idx, n_init, max_age, feature, class_id));
+    }
+
     void Tracker::initiate_track(const Detection& detection) {
         auto data = kalman_filter->initiate(detection.to_xyah());
         auto mean = data.mean;
         auto covariance = data.covariance;
 
-        tracks.push_back(Track(mean, covariance, _next_idx, n_init, max_age, detection.feature, detection.class_id));
+        //INFO: strange issue under MS 2017 when using std::make_shared<Track>(...), https://github.com/WebAssembly/binaryen/issues/1763 
+        auto track = build_func_(mean, covariance, _next_idx, n_init, max_age, detection.feature, detection.class_id);
+        tracks.push_back(track);
         _next_idx += 1;
     }
 
-    const std::vector<Track> &Tracker::getTracks() const {
+    const std::vector<Tracker::TrackPtr> &Tracker::getTracks() const {
         return tracks;
     }
 }

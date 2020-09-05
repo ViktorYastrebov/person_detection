@@ -3,7 +3,7 @@
 namespace deep_sort {
     using namespace common::datatypes;
 
-    Track::Track(KalmanMeanMatType &mean, KalmanCovAMatType &covariance, int track_id, int n_init, int max_age, const Feature &feature, const int class_id)
+    Track::Track(const KalmanMeanMatType &mean, const KalmanCovAMatType &covariance, int track_id, int n_init, int max_age, const Feature &feature, const int class_id)
         :time_since_update(0)
         , track_id(track_id)
         , class_id(class_id)
@@ -37,6 +37,10 @@ namespace deep_sort {
         if (state == TrackState::Tentative && hits >= _n_init) {
             state = TrackState::Confirmed;
         }
+    }
+
+    Track::TrackType Track::getType() const {
+        return TrackType::DEFAULT;
     }
 
     void Track::mark_missed() {

@@ -59,11 +59,11 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
             data.frame = frame;
 
             for (const auto &track : tracker.getTracks()) {
-                if (!track.is_confirmed() || track.time_since_update > 1) {
+                if (!track->is_confirmed() || track->time_since_update > 1) {
                     continue;
                 }
-                auto bbox = track.to_tlwh();
-                data.tracks_data.push_back({ bbox, track.track_id, track.class_id });
+                auto bbox = track->to_tlwh();
+                data.tracks_data.push_back({ bbox, track->track_id, track->class_id });
             }
             display_frame_.putInput(std::move(data));
 

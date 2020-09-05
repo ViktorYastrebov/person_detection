@@ -10,4 +10,4 @@ link_directories(${TENSOR_RT_BASE}/lib)
 
 
 add_executable(simple_demo ${SOURCE_FILES})
-target_link_libraries(simple_demo detection_engine deep_sort_tracker sort_tracker)
+target_link_libraries(simple_demo detection_engine deep_sort_tracker sort_tracker inside_time_tracker)

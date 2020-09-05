@@ -18,13 +18,20 @@ namespace deep_sort {
             Deleted
         };
 
-        Track(common::datatypes::KalmanMeanMatType &mean, common::datatypes::KalmanCovAMatType &covariance,
+        //Base pattern to determine type of object
+        enum TrackType {
+            DEFAULT,
+            IN_AREA_TRACKER
+        };
+
+        Track(const common::datatypes::KalmanMeanMatType &mean, const common::datatypes::KalmanCovAMatType &covariance,
             int track_id, int n_init, int max_age, const common::datatypes::Feature &feature,
             const int class_id);
-        ~Track() = default;
+        virtual ~Track() = default;
 
         void predit(KalmanFilter &kf);
         void update(KalmanFilter &kf, const common::datatypes::Detection &detection);
+        virtual TrackType getType() const;
 
         void mark_missed();
         bool is_confirmed() const;

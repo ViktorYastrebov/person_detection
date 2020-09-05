@@ -5,8 +5,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${OpenCV_INCLUDE_DIRS} ${DETECTI
 
 set(SOURCE_FILES
 		"decl_spec.h"
-		# "hungarian_eigen/hungarian.h"
-		# "hungarian_eigen/hungarian.cpp"
 		"linear_assignment.h"
 		"linear_assignment.cpp"
 		"tracker.h"
