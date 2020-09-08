@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 
 detector::MODEL_TYPE getByExtention(const std::string &model_file) {
     auto fn = std::filesystem::path(model_file).filename().string();
@@ -48,8 +49,31 @@ void sort_tracking(const std::string &model_path, const std::string &file_name) 
     }
 }
 
-void deep_sort_tracking_time(const std::string &model_path, const std::string &file_name, const std::string &deep_sort_model) {
+std::vector<cv::Point> parse_file(const std::string &file) {
+    std::vector<cv::Point> points;
+    std::ifstream ifs(file.c_str());
+    if (ifs) {
+        std::string coords;
+        while (std::getline(ifs, coords)) {
+            auto pos = coords.find(',');
+            if (pos != std::string::npos) {
+                auto x = coords.substr(0, pos);
+                auto y = coords.substr(pos + 1);
+                auto i_x = std::stoi(x);
+                auto i_y = std::stoi(y);
+                points.push_back(cv::Point(i_x, i_y));
+            }
+        }
+    } else {
+        throw std::runtime_error("can't open polygon file");
+    }
+    return points;
+}
+
+void deep_sort_tracking_time(const std::string &model_path, const std::string &file_name, const std::string &deep_sort_model, const std::string &points_file) {
     try {
+        auto polygon = parse_file(points_file);
+
         cv::VideoCapture video_stream(file_name);
         std::vector<int> persons{ 0 };
         auto detector = detector::build(getByExtention(model_path), model_path, persons);
@@ -68,12 +92,12 @@ void deep_sort_tracking_time(const std::string &model_path, const std::string &f
         //};
 
         //INFO: for testing
-        std::vector<cv::Point> polygon{
-            cv::Point(400, 475),
-            cv::Point(1030, 475),
-            cv::Point(1030, 880),
-            cv::Point(400, 880)
-        };
+        //std::vector<cv::Point> polygon{
+        //    cv::Point(400, 475),
+        //    cv::Point(1030, 475),
+        //    cv::Point(1030, 880),
+        //    cv::Point(400, 880)
+        //};
 
         //INFO: just for visual checking
         std::vector<std::vector<cv::Point>> contours{ polygon };
@@ -105,16 +129,18 @@ void deep_sort_tracking_time(const std::string &model_path, const std::string &f
                     static_cast<int>(bbox(2)),
                     static_cast<int>(bbox(3))
                 );
+                std::string time = "None";
                 cv::Scalar color(0, 0, 255);
                 if (track->getType() == deep_sort::Track::IN_AREA_TRACKER) {
                     auto time_track = std::static_pointer_cast<inside_area_tracker::InAreaTimeTrack>(track);
                     if (time_track->isInside()) {
                         color = cv::Scalar(0, 255, 0);
+                        time = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time_track->duration()).count());
                     }
                 }
 
                 cv::rectangle(frame, rect, color, 2);
-                std::string str_id = std::to_string(track->track_id) + ", class ID:" + std::to_string(track->class_id);
+                std::string str_id = std::to_string(track->track_id) + ", class ID:" + std::to_string(track->class_id) + "Time: " + time;
                 cv::putText(frame, str_id, cv::Point(rect.x, rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, color, 2);
             }
             //auto s = frame.size();
@@ -214,19 +240,21 @@ int main(int argc, char *argv[]) {
             std::string model_path(argv[2]);
             std::string file_path(argv[3]);
             std::string deep_sort_model(argv[4]);
-            deep_sort_tracking_time(model_path, file_path, deep_sort_model);
+            std::string polygon_file(argv[5]);
+            deep_sort_tracking_time(model_path, file_path, deep_sort_model, polygon_file);
         } else {
             std::cout << "Usage : [-d, -s, -t] \"detection_model_path\" \"video_file_path\" [\"deep_sort_model_path\"]" << std::endl;
             std::cout << "First params determines use SORT(-s option) algo or DEEP SORT(-d option)" << std::endl;
             std::cout << "\tExample: simple_demo -d \"yolov3.engine\" \"video.mp4\" \"deep_sort_32.engine\"" << std::endl;
             std::cout << "\tExample: simple_demo -s \"yolov3.engine\" \"video.mp4\"" << std::endl;
-            std::cout << "\tExample: simple_demo -t \"yolov3.engine\" \"video.mp4\"" << std::endl;
+            std::cout << "\tExample: simple_demo -t \"yolov3.engine\" \"video.mp4 or stream\" \"deep_sort_32.engine\" \"file_polygon.txt\"" << std::endl;
         }
     } else {
         std::cout << "Usage : [-d, -s] \"detection_model_path\" \"video_file_path\" [\"deep_sort_model_path\"]" << std::endl;
         std::cout << "First params determines use SORT(-s option) algo or DEEP SORT(-d option)" << std::endl;
         std::cout << "\tExample: simple_demo -d \"yolov3.engine\" \"video.mp4\" \"deep_sort_32.engine\"" << std::endl;
         std::cout << "\tExample: simple_demo -s \"yolov3.engine\" \"video.mp4\"" << std::endl;
+        std::cout << "\tExample: simple_demo -t \"yolov3.engine\" \"video.mp4 or stream\" \"deep_sort_32.engine\" \"file_polygon.txt\"" << std::endl;
     }
     return 0;
 }
