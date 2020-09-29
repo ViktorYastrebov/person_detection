@@ -14,15 +14,22 @@ namespace sort_tracker {
     class TRACKER_ENGINE SortTracker {
     public:
 
+        struct State {
+            common::datatypes::DetectionBox bbox;
+            float vx;
+            float vy;
+        };
+
         static const int STATE_SIZE = 7;
-        static const int MEASUREMENT_SIZE = 4;
+        static const int MEASUREMENT_SIZE = 6;
 
         SortTracker(const common::datatypes::DetectionBox &bbox, const int class_id);
         ~SortTracker() = default;
 
         void update(const common::datatypes::DetectionBox &bbox);
-        common::datatypes::DetectionBox predict();
-        common::datatypes::DetectionBox getState() const;
+        //common::datatypes::DetectionBox predict();
+        State predict();
+        State getState() const;
         int getTimeSinceUpdate() const;
 
         int getID() const;

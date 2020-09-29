@@ -56,7 +56,6 @@ namespace sort_tracker {
         }
         Matrix<double> orig = matrix;
 
-        //auto indices = helpers::solve(matrix);
         auto indices = hungarian::solve(matrix);
 
         for (size_t col = 0; col < detection_idxs.size(); col++) {
@@ -109,7 +108,7 @@ namespace sort_tracker {
             for (const auto &detection : detections) {
                 trackers_.push_back(SortTracker(detection.bbox, detection.class_id));
                 cv::Rect cv_rect(detection.bbox(0), detection.bbox(1), detection.bbox(2), detection.bbox(3));
-                out.push_back({ cv_rect, trackers_.back().getID(), detection.class_id });
+                out.push_back({ cv_rect, trackers_.back().getID(), detection.class_id, 0.0f, 0.0f });
             }
             initialized_ = true;
             return out;
@@ -118,9 +117,10 @@ namespace sort_tracker {
         std::vector<DetectionBox> predicted_boxes;
         for (auto it = trackers_.begin(); it != trackers_.end();)
         {
-            DetectionBox pBox = (*it).predict();
-            if (pBox(0) >= 0.0f && pBox(1) >= 0.0f) {
-                predicted_boxes.push_back(pBox);
+            //DetectionBox pBox = (*it).predict();
+            auto state = (*it).predict();
+            if (state.bbox(0) >= 0.0f && state.bbox(1) >= 0.0f) {
+                predicted_boxes.push_back(state.bbox);
                 ++it;
             } else {
                 it = trackers_.erase(it);
@@ -150,9 +150,9 @@ namespace sort_tracker {
         std::vector< TrackResult > results;
         for (auto it = trackers_.begin(); it != trackers_.end();) {
             if (((*it).getTimeSinceUpdate() < 1) && (it->getHitSteak() >= min_hits_ || frame_counter_ <= min_hits_)) {
-                auto rect = it->getState();
-                cv::Rect cv_rect(rect(0), rect(1), rect(2), rect(3));
-                results.push_back({ cv_rect , it->getID(), it->getClassID() });
+                auto state = it->getState();
+                cv::Rect cv_rect(state.bbox(0), state.bbox(1), state.bbox(2), state.bbox(3));
+                results.push_back({ cv_rect , it->getID(), it->getClassID(), state.vx, state.vy});
                 ++it;
             } else {
                 ++it;

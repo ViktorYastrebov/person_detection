@@ -7,15 +7,30 @@ namespace sort_tracker {
 
     using namespace common::datatypes;
 
-    inline std::array<float, SortTracker::MEASUREMENT_SIZE> convert_bound_box_to_z(const DetectionBox &bbox) {
+    inline std::array<float, SortTracker::MEASUREMENT_SIZE> convert_bound_box_to_z(const DetectionBox &bbox, const DetectionBox &prev) {
+        // 10 ms can be different
+        constexpr const float TIME_STAMP = 0.01f;
         auto x = bbox(0) + bbox(2) / 2;
         auto y = bbox(1) + bbox(3) / 2;
         auto s = bbox(2)*bbox(3);
         auto r = bbox(2) / bbox(3);
-        return { x,y,s,r };
+        auto prev_x = prev(0) + prev(2) / 2;
+        auto prev_y = prev(1) + prev(3) / 2;
+        auto vx = (x - prev_x);
+        auto vy = (y - prev_y);
+        return { x,y,s,r, vx, vy };
     }
 
-    inline DetectionBox convert_xysr_to_bbox(float cx, float cy, float s, float r) {
+    inline std::array<float, SortTracker::MEASUREMENT_SIZE> init_bound_box_to_z(const DetectionBox &bbox) {
+        auto x = bbox(0) + bbox(2) / 2;
+        auto y = bbox(1) + bbox(3) / 2;
+        auto s = bbox(2)*bbox(3);
+        auto r = bbox(2) / bbox(3);
+        return { x,y,s,r, 0.0f, 0.0f};
+    }
+
+
+    inline SortTracker::State convert_xysr_to_bbox(float cx, float cy, float s, float r, float vx, float vy) {
         float w = sqrt(s * r);
         float h = s / w;
         float x = (cx - w / 2);
@@ -25,7 +40,7 @@ namespace sort_tracker {
             x = 0;
         if (y < 0 && cy > 0)
             y = 0;
-        return DetectionBox(x, y, w, h);
+        return { DetectionBox(x, y, w, h), vx, vy };
     }
 
     int SortTracker::ID_COUNTER = 0;
@@ -57,7 +72,7 @@ namespace sort_tracker {
         filter_.errorCovPost.at<float>(5, 5) *= 1000;
         filter_.errorCovPost.at<float>(6, 6) *= 1000;
 
-        auto bbox_z = convert_bound_box_to_z(bbox);
+        auto bbox_z = init_bound_box_to_z(bbox);
         for (int i = 0; i < MEASUREMENT_SIZE; ++i) {
             filter_.statePost.at<float>(i) = bbox_z[i];
         }
@@ -67,12 +82,13 @@ namespace sort_tracker {
 
     void SortTracker::update(const common::datatypes::DetectionBox &bbox) {
         time_since_update_ = 0;
-        history_.clear();
         ++hits_;
         ++hit_streak_;
 
         // measurement
-        auto conv_z = convert_bound_box_to_z(bbox);
+        auto prev = history_.back();
+        auto conv_z = convert_bound_box_to_z(bbox, prev);
+        history_.clear();
         for (int i = 0; i < MEASUREMENT_SIZE; ++i) {
             mesurements_.at<float>(i) = conv_z[i];
         }
@@ -80,7 +96,7 @@ namespace sort_tracker {
         filter_.correct(mesurements_);
     }
 
-    common::datatypes::DetectionBox SortTracker::predict() {
+    SortTracker::State SortTracker::predict() {
         cv::Mat p = filter_.predict();
         ++age_;
 
@@ -89,14 +105,14 @@ namespace sort_tracker {
         }
         time_since_update_ += 1;
 
-        auto rect = convert_xysr_to_bbox(p.at<float>(0, 0), p.at<float>(1, 0), p.at<float>(2, 0), p.at<float>(3, 0));
-        history_.push_back(rect);
-        return history_.back();
+        auto rect = convert_xysr_to_bbox(p.at<float>(0, 0), p.at<float>(1, 0), p.at<float>(2, 0), p.at<float>(3, 0), p.at<float>(4,0), p.at<float>(5,0));
+        history_.push_back(rect.bbox);
+        return rect;
     }
 
-    common::datatypes::DetectionBox SortTracker::getState() const {
+    SortTracker::State SortTracker::getState() const {
         cv::Mat s = filter_.statePost;
-        auto rect = convert_xysr_to_bbox(s.at<float>(0, 0), s.at<float>(1, 0), s.at<float>(2, 0), s.at<float>(3, 0));
+        auto rect = convert_xysr_to_bbox(s.at<float>(0, 0), s.at<float>(1, 0), s.at<float>(2, 0), s.at<float>(3, 0), s.at<float>(4,0), s.at<float>(5,0));
         return rect;
     }
 

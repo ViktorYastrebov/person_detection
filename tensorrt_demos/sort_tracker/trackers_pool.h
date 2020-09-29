@@ -13,6 +13,8 @@ namespace sort_tracker {
         cv::Rect bbox;
         int id;
         int class_id;
+        float vx;
+        float vy;
     };
 
     class TRACKER_ENGINE TrackersPool {
