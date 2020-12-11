@@ -1,7 +1,12 @@
 #pragma once 
 
-#ifdef common_EXPORTS
-#define COMMON_EXPORT __declspec(dllexport)
+#if WIN32
+  #ifdef common_EXPORTS
+  #define COMMON_EXPORT __declspec(dllexport)
+  #else
+  #define COMMON_EXPORT __declspec(dllimport)
+  #endif
 #else
-#define COMMON_EXPORT __declspec(dllimport)
+  #define COMMON_EXPORT
 #endif
+

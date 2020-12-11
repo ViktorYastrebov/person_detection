@@ -9,31 +9,34 @@ find_package(OpenCV REQUIRED PATHS ${INSTALLED_OPENCV_PATH} NO_DEFAULT_PATH)
 set(CUDA_LINK_LIBRARIES_KEYWORD PUBLIC)
 set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
-include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE} ${OpenCV_INCLUDE_DIRS} ${ROOT_DIR})
-link_directories(${CUDAToolkit_LIBRARY_DIR} ${TENSOR_RT_BASE}/lib)
+link_directories(${CUDAToolkit_LIBRARY_DIR}
+	#       	${TENSOR_RT_BASE}/lib
+	)
 
 set(SOURCE_FILES 
-	"decl_spec.h"
-	"base_model.h"
-	"base_model.cpp"
-	"yolov3_model.h"
-	"yolov3_model.cpp"
-	"yolov5_model.h"
-	"yolov5_model.cpp"
-	"deep_sort.cpp"
-	"deep_sort.h"
-	"builder.h"
-	"builder.cpp"
-	)
+    "decl_spec.h"
+    "base_model.h"
+    "base_model.cpp"
+    "common_model.cpp"
+    "common_model.h"
+    "yolov3_model.h"
+    "yolov3_model.cpp"
+    "yolov5_model.h"
+    "yolov5_model.cpp"
+    "builder.h"
+    "builder.cpp"
+    )
 
 add_library(detection_engine SHARED ${SOURCE_FILES})
 
-target_include_directories(detection_engine INTERFACE ${TENSOR_RT_INCLUDE} ${CUDA_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${ROOT_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(detection_engine INTERFACE 
+	#	${TENSOR_RT_INCLUDE}
+	${CUDA_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${ROOT_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(detection_engine PRIVATE yolov3_plugin)
-target_link_libraries(detection_engine PRIVATE yolov5_plugin)
-target_link_libraries(detection_engine PRIVATE common)
-target_link_libraries(detection_engine PUBLIC ${CUDA_LIBRARIES})
-target_link_libraries(detection_engine PUBLIC nvinfer)
-target_link_libraries(detection_engine PUBLIC ${OpenCV_LIBS})
-
+target_link_libraries(detection_engine  PRIVATE yolov3_plugin
+                                               yolov5_plugin
+                                               common
+                                        PUBLIC  ${CUDA_LIBRARIES}
+                                                nvinfer
+                                                ${OpenCV_LIBS}
+                     )

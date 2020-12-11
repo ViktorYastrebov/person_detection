@@ -5,10 +5,10 @@
 #include <fstream>
 #include <map>
 
-namespace {
-    using namespace nvinfer1;
-    REGISTER_TENSORRT_PLUGIN(YoloV3SPPPluginCreator);
-}
+//namespace {
+//    using namespace nvinfer1;
+//    REGISTER_TENSORRT_PLUGIN(YoloV3SPPPluginCreator);
+//}
 
 namespace detector {
     //INFO: it's type dependent/memory structure so for now just make the copy-paste for YoloV3 & YoloV5( See the Detection type )
@@ -132,15 +132,15 @@ namespace detector {
 
     cv::Mat YoloV3SPPModel::preprocessImage(const cv::Mat &img) {
         int w, h, x, y;
-        float r_w = INPUT_W / (img.cols*1.0);
-        float r_h = INPUT_H / (img.rows*1.0);
+        float r_w = INPUT_W / (img.cols*1.0f);
+        float r_h = INPUT_H / (img.rows*1.0f);
         if (r_h > r_w) {
             w = INPUT_W;
-            h = r_w * img.rows;
+            h = static_cast<int>(r_w * img.rows);
             x = 0;
             y = (INPUT_H - h) / 2;
         } else {
-            w = r_h * img.cols;
+            w = static_cast<int>(r_h * img.cols);
             h = INPUT_H;
             x = (INPUT_W - w) / 2;
             y = 0;
@@ -166,8 +166,8 @@ namespace detector {
         float *output_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::OUT);
         yolov3_utils::nms(res, output_host_buffer, conf, nms_thresh, classes_ids_);
 
-        float r_w = INPUT_W / (prepared.cols * 1.0);
-        float r_h = INPUT_H / (prepared.rows * 1.0);
+        float r_w = INPUT_W / (prepared.cols * 1.0f);
+        float r_h = INPUT_H / (prepared.rows * 1.0f);
         const int rows = prepared.rows;
         const int cols = prepared.cols;
 
@@ -175,10 +175,10 @@ namespace detector {
 
         if (r_h > r_w) {
             for (const auto &det : res) {
-                int l = det.bbox[0] - det.bbox[2] / 2.f;
-                int r = det.bbox[0] + det.bbox[2] / 2.f;
-                int t = det.bbox[1] - det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
-                int b = det.bbox[1] + det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
+                auto l = det.bbox[0] - det.bbox[2] / 2.f;
+                auto r = det.bbox[0] + det.bbox[2] / 2.f;
+                auto t = det.bbox[1] - det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
+                auto b = det.bbox[1] + det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
                 l = l / r_w;
                 r = r / r_w;
                 t = t / r_w;
@@ -187,10 +187,10 @@ namespace detector {
             }
         } else {
             for (const auto &det : res) {
-                int l = det.bbox[0] - det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
-                int r = det.bbox[0] + det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
-                int t = det.bbox[1] - det.bbox[3] / 2.f;
-                int b = det.bbox[1] + det.bbox[3] / 2.f;
+                auto l = det.bbox[0] - det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
+                auto r = det.bbox[0] + det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
+                auto t = det.bbox[1] - det.bbox[3] / 2.f;
+                auto b = det.bbox[1] + det.bbox[3] / 2.f;
                 l = l / r_h;
                 r = r / r_h;
                 t = t / r_h;

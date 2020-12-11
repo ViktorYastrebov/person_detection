@@ -15,8 +15,8 @@ KalmanFilter::KalmanFilter()
         _motion_mat(i, ndim + i) = dt;
     }
     _update_mat = Eigen::MatrixXf::Identity(4, 8);
-    _std_weight_position = 1.0 / 20;
-    _std_weight_velocity = 1.0 / 160;
+    _std_weight_position = 1.0f / 20.0f;
+    _std_weight_velocity = 1.0f / 160.0f;
 }
 
 KalmanFilter::MatResult KalmanFilter::initiate(const DetectionBox& measurement) {
@@ -34,11 +34,11 @@ KalmanFilter::MatResult KalmanFilter::initiate(const DetectionBox& measurement) 
     KalmanMeanMatType std;
     std(0) = 2 * _std_weight_position * measurement[3];
     std(1) = 2 * _std_weight_position * measurement[3];
-    std(2) = 1e-2;
+    std(2) = 1e-2f;
     std(3) = 2 * _std_weight_position * measurement[3];
     std(4) = 10 * _std_weight_velocity * measurement[3];
     std(5) = 10 * _std_weight_velocity * measurement[3];
-    std(6) = 1e-5;
+    std(6) = 1e-5f;
     std(7) = 10 * _std_weight_velocity * measurement[3];
 
     KalmanMeanMatType tmp = std.array().square();
@@ -50,12 +50,12 @@ void KalmanFilter::predict(KalmanMeanMatType& mean, KalmanCovAMatType& covarianc
     MatDetection std_pos;
     std_pos << _std_weight_position * mean(3),
         _std_weight_position * mean(3),
-        1e-2,
+        1e-2f,
         _std_weight_position * mean(3);
     MatDetection std_vel;
     std_vel << _std_weight_velocity * mean(3),
         _std_weight_velocity * mean(3),
-        1e-5,
+        1e-5f,
         _std_weight_velocity * mean(3);
     KalmanMeanMatType tmp;
     tmp.block<1, 4>(0, 0) = std_pos;
@@ -73,7 +73,7 @@ void KalmanFilter::predict(KalmanMeanMatType& mean, KalmanCovAMatType& covarianc
 KalmanFilter::HMatResult KalmanFilter::project(const KalmanMeanMatType& mean, const KalmanCovAMatType& covariance) {
     MatDetection std;
     std << _std_weight_position * mean(3), _std_weight_position * mean(3),
-        1e-1, _std_weight_position * mean(3);
+        1e-1f, _std_weight_position * mean(3);
     KalmanHMeanType mean1 = _update_mat * mean.transpose();
     KalmanHCovType covariance1 = _update_mat * covariance * (_update_mat.transpose());
     Eigen::Matrix<float, 4, 4> diag = std.asDiagonal();

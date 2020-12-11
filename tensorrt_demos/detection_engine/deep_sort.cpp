@@ -5,7 +5,25 @@ namespace deep_sort_tracker {
 
     using namespace common;
 
-    DeepSort::DeepSort(const std::filesystem::path &model_path, const int BATCH_SIZE)
+    struct DeepSort::Pimpl {
+        Pimpl(const std::filesystem::path &model_path, const int BATCH_SIZE);
+        ~Pimpl() = default;
+        common::datatypes::Detections getFeatures(const cv::Mat &imageRGB, const common::datatypes::DetectionResults &bboxes);
+    private:
+        void preapreBuffer(const std::vector<cv::Mat> &resized);
+    private:
+        Logger gLogger_;
+        int batch_size_;
+        std::vector<char> deserialized_buffer_;
+        common::TensorRTUPtr<nvinfer1::IRuntime> runtime_;
+        common::TensorRTUPtr<nvinfer1::ICudaEngine> engine_;
+        common::TensorRTUPtr<nvinfer1::IExecutionContext> context_;
+        std::unique_ptr<common::HostBuffers> host_buffers_;
+        std::unique_ptr<common::DeviceBuffers> device_buffers_;
+        cudaStream_t stream_;
+    };
+
+    DeepSort::Pimpl::Pimpl(const std::filesystem::path &model_path, const int BATCH_SIZE)
         :batch_size_(BATCH_SIZE)
     {
         if (batch_size_ > MAX_BATCH_SIZE) {
@@ -18,7 +36,8 @@ namespace deep_sort_tracker {
                 (std::istreambuf_iterator<char>(ifs)),
                 std::istreambuf_iterator<char>()
                 );
-        } else {
+        }
+        else {
             throw std::runtime_error("Model path does not exists");
         }
         runtime_ = TensorRTUPtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(gLogger_));
@@ -50,7 +69,7 @@ namespace deep_sort_tracker {
         }
     }
 
-    common::datatypes::Detections DeepSort::getFeatures(const cv::Mat &imageRGB, const common::datatypes::DetectionResults &bboxes) {
+    common::datatypes::Detections DeepSort::Pimpl::getFeatures(const cv::Mat &imageRGB, const common::datatypes::DetectionResults &bboxes) {
         int bbox_size = static_cast<int>(bboxes.size());
 
         common::datatypes::Detections result;
@@ -61,7 +80,11 @@ namespace deep_sort_tracker {
         for (int i = 0; i < iters; ++i) {
             std::vector<cv::Mat> prepared;
             for (int j = i * batch_size_; j < i * batch_size_ + batch_size_; ++j) {
-                cv::Rect rect_roi(bboxes[j].bbox(0), bboxes[j].bbox(1), bboxes[j].bbox(2), bboxes[j].bbox(3));
+                cv::Rect rect_roi(static_cast<int>(std::roundf(bboxes[j].bbox(0))),
+                                  static_cast<int>(std::roundf(bboxes[j].bbox(1))),
+                                  static_cast<int>(std::roundf(bboxes[j].bbox(2))),
+                                  static_cast<int>(std::roundf(bboxes[j].bbox(3)))
+                );
                 rect_roi.x = std::max(rect_roi.x, 0);
                 rect_roi.y = std::max(rect_roi.y, 0);
 
@@ -92,7 +115,12 @@ namespace deep_sort_tracker {
         std::vector<cv::Mat> prepared;
         for (int i = iters * batch_size_; i < iters * batch_size_ + rest; ++i) {
             //INFO: check could work as is
-            cv::Rect rect_roi(bboxes[i].bbox(0), bboxes[i].bbox(1), bboxes[i].bbox(2), bboxes[i].bbox(3));
+            cv::Rect rect_roi(
+                static_cast<int>(std::roundf(bboxes[i].bbox(0))),
+                static_cast<int>(std::roundf(bboxes[i].bbox(1))),
+                static_cast<int>(std::roundf(bboxes[i].bbox(2))),
+                static_cast<int>(std::roundf(bboxes[i].bbox(3)))
+            );
             rect_roi.x = std::max(rect_roi.x, 0);
             rect_roi.y = std::max(rect_roi.y, 0);
 
@@ -121,7 +149,7 @@ namespace deep_sort_tracker {
         return result;
     }
 
-    void DeepSort::preapreBuffer(const std::vector<cv::Mat> &crops) {
+    void DeepSort::Pimpl::preapreBuffer(const std::vector<cv::Mat> &crops) {
         int offset = 0;
         float * input_host_buffer = (float*)host_buffers_->getBuffer(BUFFER_TYPE::INPUT);
         for (const auto &crop : crops) {
@@ -132,5 +160,29 @@ namespace deep_sort_tracker {
             }
             offset += INPUT_H * INPUT_W;
         }
+    }
+
+    DeepSort::DeepSort(const std::filesystem::path &model_path, const int BATCH_SIZE)
+        : pimpl_(nullptr)
+    {
+        try {
+            pimpl_ = new Pimpl(model_path, BATCH_SIZE);
+        }
+        catch (...) {
+            delete pimpl_;
+            pimpl_ = nullptr;
+            throw;
+        }
+    }
+
+    DeepSort::~DeepSort() {
+        if (pimpl_) {
+            delete pimpl_;
+        }
+    }
+
+    common::datatypes::Detections DeepSort::getFeatures(const cv::Mat &imageRGB, const common::datatypes::DetectionResults &bboxes) {
+        return pimpl_->getFeatures(imageRGB, bboxes);
+        
     }
 }

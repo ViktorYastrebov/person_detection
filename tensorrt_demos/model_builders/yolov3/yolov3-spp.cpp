@@ -528,6 +528,51 @@ int main(int argc, char** argv) {
             file.read(trtModelStream, size);
             file.close();
         }
+    } else if(argc > 1 && std::string(argv[1]) == "-i") {
+        std::string model_name(argv[2]);
+        const std::string engine_name = model_name + ".engine";
+        std::ifstream file(engine_name, std::ios::binary);
+        if (file.good()) {
+            file.seekg(0, file.end);
+            size = file.tellg();
+            file.seekg(0, file.beg);
+            trtModelStream = new char[size];
+            assert(trtModelStream);
+            file.read(trtModelStream, size);
+            file.close();
+        }
+        IRuntime* runtime = createInferRuntime(gLogger);
+	    assert(runtime != nullptr);
+	    ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
+	    assert(engine != nullptr);
+	    delete[] trtModelStream;
+	    
+        const int inputIndex = engine->getBindingIndex(INPUT_BLOB_NAME);
+        const int outputIndex = engine->getBindingIndex(OUTPUT_BLOB_NAME);
+        if (inputIndex != 0 && outputIndex != 1) {
+            std::cout << "Invalid bind indexes for model : " << model_name << std::endl;
+        }
+        auto inDims = engine->getBindingDimensions(inputIndex);
+        auto outDims = engine->getBindingDimensions(outputIndex);
+        
+        std::cout << "Input : " << std::endl;
+        std::cout << "\t" << engine->getBindingFormatDesc(inputIndex) << std::endl;
+        std::cout << "\t dims : ";
+        for(int i = 0; i < inDims.nbDims; ++i) {
+           std::cout << inDims.d[i] << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "Output : " << std::endl;
+        std::cout << "\t" << engine->getBindingFormatDesc(outputIndex) << std::endl;
+        std::cout << "\t dims : ";
+        for(int i = 0; i < outDims.nbDims; ++i) {
+           std::cout << outDims.d[i] << " ";
+        }
+        std::cout << std::endl;
+      
+        engine->destroy();
+        runtime->destroy();
+        return 0;
     } else {
         std::cerr << "arguments not right!" << std::endl;
         std::cerr << "./yolov3-spp -s  // serialize model to plan file" << std::endl;

@@ -1,6 +1,6 @@
 #pragma once
 #include "common/decl_spec.h"
-#include "common/datatypes.h"
+#include "common/cost_matrix_type.h"
 #include "munkres/munkres.h"
 
 namespace hungarian {

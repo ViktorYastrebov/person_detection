@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/datatypes.h"
+#include "deep_sort_types.h"
 
 class KalmanFilter
 {
@@ -13,10 +13,10 @@ public:
     struct HMatResult {
         common::datatypes::KalmanHMeanType hmean;
         common::datatypes::KalmanHCovType hconv;
-   };
+    };
 
-   KalmanFilter();
-   MatResult initiate(const common::datatypes::DetectionBox& measurement);
+    KalmanFilter();
+    MatResult initiate(const common::datatypes::DetectionBox& measurement);
 
     void predict(common::datatypes::KalmanMeanMatType& mean, common::datatypes::KalmanCovAMatType& covariance);
     HMatResult project(const common::datatypes::KalmanMeanMatType& mean, const common::datatypes::KalmanCovAMatType& covariance);

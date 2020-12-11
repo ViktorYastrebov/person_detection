@@ -3,11 +3,12 @@
 #include "cuda_runtime_api.h"
 #include "common/logging.h"
 #include "common.hpp"
+#include <filesystem>
 
 #define DEVICE 0  // GPU id
 #define NMS_THRESH 0.4
 #define CONF_THRESH 0.5
-#define BATCH_SIZE 1
+//#define BATCH_SIZE 1
 
 //INFO: refactored
 //#define NET m  // s m l x
@@ -506,16 +507,25 @@ int main(int argc, char** argv) {
     // create a model using the API directly and serialize it to a stream
     char *trtModelStream{nullptr};
     size_t size{0};
+    unsigned int BATCH_SIZE = 1;
 
     if (argc > 1 && std::string(argv[1]) == "-s") {
         bool use_float16 = true;
         std::string weights_path;
-        if (argc == 4 && std::string(argv[2]) == "no-f16") {
+        if (argc > 3 && std::string(argv[2]) == "no-f16") {
             use_float16 = false;
             weights_path = std::string(argv[3]);
+
+            if(argc > 5 && std::string(argv[4]) == "--batch_size") {
+                BATCH_SIZE = std::stoul(argv[5]);
+            }
         } else {
             weights_path = std::string(argv[2]);
+            if(argc > 4 && std::string(argv[3]) == "--batch_size") {
+                BATCH_SIZE = std::stoul(argv[4]);
+            }
         }
+
         auto model_name = std::filesystem::path(weights_path).stem().string();
         //std::string model_name(argv[2]);
         const std::string engine_name = model_name + ".engine";
@@ -544,6 +554,53 @@ int main(int argc, char** argv) {
             file.read(trtModelStream, size);
             file.close();
         }
+    } else if(argc > 1 && std::string(argv[1]) == "-i") {
+        std::string model_name(argv[2]);
+        const std::string engine_name = model_name + ".engine";
+        std::ifstream file(engine_name, std::ios::binary);
+        if (file.good()) {
+            file.seekg(0, file.end);
+            size = file.tellg();
+            file.seekg(0, file.beg);
+            trtModelStream = new char[size];
+            assert(trtModelStream);
+            file.read(trtModelStream, size);
+            file.close();
+        }
+        IRuntime* runtime = createInferRuntime(gLogger);
+        assert(runtime != nullptr);
+        ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
+        assert(engine != nullptr);
+        delete[] trtModelStream;
+
+        const int inputIndex = engine->getBindingIndex(INPUT_BLOB_NAME);
+        const int outputIndex = engine->getBindingIndex(OUTPUT_BLOB_NAME);
+        if (inputIndex != 0 && outputIndex != 1) {
+            std::cout << "Invalid bind indexes for model : " << model_name << std::endl;
+        }
+        auto inDims = engine->getBindingDimensions(inputIndex);
+        auto outDims = engine->getBindingDimensions(outputIndex);
+        
+        std::cout << "Input : " << std::endl;
+        std::cout << "\t name : " << engine->getBindingName(inputIndex) << std::endl;
+        std::cout << "\t" << engine->getBindingFormatDesc(inputIndex) << std::endl;
+        std::cout << "\t dims : ";
+        for(int i = 0; i < inDims.nbDims; ++i) {
+           std::cout << inDims.d[i] << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "Output : " << std::endl;
+        std::cout << "\t name : " << engine->getBindingName(outputIndex) << std::endl;
+        std::cout << "\t" << engine->getBindingFormatDesc(outputIndex) << std::endl;
+        std::cout << "\t dims : ";
+        for(int i = 0; i < outDims.nbDims; ++i) {
+           std::cout << outDims.d[i] << " ";
+        }
+        std::cout << std::endl;
+      
+        engine->destroy();
+        runtime->destroy();
+        return 0;
     } else {
         std::cerr << "arguments not right!" << std::endl;
         std::cerr << "./yolov5 -s \"model_name\" [yolov5s, yolov5m, yolov5l, yolov5x] // serialize model to plan file" << std::endl;
@@ -558,10 +615,13 @@ int main(int argc, char** argv) {
     }
 
     // prepare input data ---------------------------
-    static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
+    std::vector<float> data(BATCH_SIZE * 3 * INPUT_H * INPUT_W);
+    //static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
     //for (int i = 0; i < 3 * INPUT_H * INPUT_W; i++)
     //    data[i] = 1.0;
-    static float prob[BATCH_SIZE * OUTPUT_SIZE];
+    //static float prob[BATCH_SIZE * OUTPUT_SIZE];
+    std::vector<float> prob(BATCH_SIZE * OUTPUT_SIZE);
+
     IRuntime* runtime = createInferRuntime(gLogger);
     assert(runtime != nullptr);
     ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
@@ -570,11 +630,11 @@ int main(int argc, char** argv) {
     assert(context != nullptr);
     delete[] trtModelStream;
 
-    int fcount = 0;
-    for (int f = 0; f < (int)file_names.size(); f++) {
+    unsigned int fcount = 0;
+    for (unsigned int f = 0; f < (unsigned int)file_names.size(); ++f) {
         fcount++;
-        if (fcount < BATCH_SIZE && f + 1 != (int)file_names.size()) continue;
-        for (int b = 0; b < fcount; b++) {
+        if (fcount < BATCH_SIZE && f + 1 != (unsigned int)file_names.size()) continue;
+        for (unsigned int b = 0; b < fcount; b++) {
             cv::Mat img = cv::imread(std::string(argv[3]) + "/" + file_names[f - fcount + 1 + b]);
             if (img.empty()) {
                 continue;
@@ -584,9 +644,9 @@ int main(int argc, char** argv) {
             for (int row = 0; row < INPUT_H; ++row) {
                 uchar* uc_pixel = pr_img.data + row * pr_img.step;
                 for (int col = 0; col < INPUT_W; ++col) {
-                    data[b * 3 * INPUT_H * INPUT_W + i] = (float)uc_pixel[2] / 255.0;
-                    data[b * 3 * INPUT_H * INPUT_W + i + INPUT_H * INPUT_W] = (float)uc_pixel[1] / 255.0;
-                    data[b * 3 * INPUT_H * INPUT_W + i + 2 * INPUT_H * INPUT_W] = (float)uc_pixel[0] / 255.0;
+                    data[b * 3 * INPUT_H * INPUT_W + i] = (float)uc_pixel[2] / 255.0f;
+                    data[b * 3 * INPUT_H * INPUT_W + i + INPUT_H * INPUT_W] = (float)uc_pixel[1] / 255.0f;
+                    data[b * 3 * INPUT_H * INPUT_W + i + 2 * INPUT_H * INPUT_W] = (float)uc_pixel[0] / 255.0f;
                     uc_pixel += 3;
                     ++i;
                 }
@@ -595,15 +655,15 @@ int main(int argc, char** argv) {
 
         // Run inference
         auto start = std::chrono::system_clock::now();
-        doInference(*context, data, prob, BATCH_SIZE);
+        doInference(*context, &data[0], &prob[0], BATCH_SIZE);
         auto end = std::chrono::system_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
         std::vector<std::vector<YoloV5::Detection>> batch_res(fcount);
-        for (int b = 0; b < fcount; b++) {
+        for (unsigned int b = 0; b < fcount; b++) {
             auto& res = batch_res[b];
             nms(res, &prob[b * OUTPUT_SIZE], CONF_THRESH, NMS_THRESH);
         }
-        for (int b = 0; b < fcount; b++) {
+        for (unsigned int b = 0; b < fcount; b++) {
             auto& res = batch_res[b];
             //std::cout << res.size() << std::endl;
             cv::Mat img = cv::imread(std::string(argv[3]) + "/" + file_names[f - fcount + 1 + b]);

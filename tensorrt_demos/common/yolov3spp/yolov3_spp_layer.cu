@@ -257,5 +257,6 @@ namespace nvinfer1
         obj->setPluginNamespace(mNamespace.c_str());
         return obj;
     }
-
+    REGISTER_TENSORRT_PLUGIN(YoloV3SPPPluginCreator);
 }
+

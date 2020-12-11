@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common/datatypes.h"
+#include "common/cost_matrix_type.h"
+#include "deep_sort_types.h"
 #include <memory>
 #include <map>
 

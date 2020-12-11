@@ -2,9 +2,8 @@
 #include <QKeyEvent>
 #include "main_window.h"
 
-//#include "detection_engine/generic_detector.h"
 #include "detection_engine/yolov3_model.h"
-#include "detection_engine/deep_sort.h"
+#include "deep_sort_tracker/deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
 
 #include <fstream>
@@ -38,7 +37,7 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
     try {
         std::vector<int> person_class{ 0 };
         auto detector = std::make_unique<detector::YoloV3SPPModel>(detector_path_, person_class);
-        auto feature_extractor = std::make_unique< deep_sort_tracker::DeepSort>(deep_sort_path_);
+        auto feature_extractor = std::make_unique< deep_sort::DeepSort>(deep_sort_path_);
         auto video_stream = cv::VideoCapture(file_path.string());
 
         constexpr const float max_cosine_distance = 0.2f;
@@ -62,8 +61,8 @@ void MainWindow::ProcessImpl(const std::filesystem::path &file_path) {
                 if (!track->is_confirmed() || track->time_since_update > 1) {
                     continue;
                 }
-                auto bbox = track->to_tlwh();
-                data.tracks_data.push_back({ bbox, track->track_id, track->class_id });
+                auto rets = track->to_tlwh();
+                data.tracks_data.push_back({ rets.position, track->track_id, track->class_id });
             }
             display_frame_.putInput(std::move(data));
 

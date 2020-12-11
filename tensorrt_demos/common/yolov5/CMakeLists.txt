@@ -8,11 +8,22 @@ find_package(CUDA ${_CUDA_VERSION} REQUIRED)
 
 option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
-include_directories(${CUDA_INCLUDE_DIRS} ${TENSOR_RT_INCLUDE})
-link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib)
+# include_directories(${CUDA_INCLUDE_DIRS}
+	#	${TENSOR_RT_INCLUDE}
+	#	)
+
+# link_directories(${CUDA_LIBRARIES} ${TENSOR_RT_BASE}/lib)
 
 cuda_add_library(yolov5_plugin SHARED ${PROJECT_SOURCE_DIR}/yolov5_layer.cu ${PROJECT_SOURCE_DIR}/yolov5_layer.h ${PROJECT_SOURCE_DIR}/decl_spec.h)
 # INFO: WinNT only
-target_compile_definitions(yolov5_plugin PUBLIC yolov5_layer_export)
+if(WIN32)
+	target_compile_definitions(yolov5_plugin PUBLIC yolov5_layer_export)
+endif()
+
+target_include_directories(yolov5_plugin INTERFACE ${CUDA_INCLUDE_DIRS})
+
 target_link_libraries(yolov5_plugin nvinfer)
-target_link_libraries(yolov5_plugin ${CUDA_LIBRARIES})
+if(WIN32)
+	target_link_libraries(yolov5_plugin ${CUDA_LIBRARIES})
+endif()
+

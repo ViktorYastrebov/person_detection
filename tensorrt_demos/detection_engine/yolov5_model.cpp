@@ -5,10 +5,10 @@
 #include <fstream>
 #include <map>
 
-namespace {
-    using namespace nvinfer1;
-    REGISTER_TENSORRT_PLUGIN(YoloV5PluginCreator);
-}
+//namespace {
+//    using namespace nvinfer1;
+//    REGISTER_TENSORRT_PLUGIN(YoloV5PluginCreator);
+//}
 
 namespace detector {
 
@@ -137,11 +137,11 @@ namespace detector {
         float r_h = INPUT_H / (img.rows*1.0f);
         if (r_h > r_w) {
             w = INPUT_W;
-            h = r_w * img.rows;
+            h = static_cast<int>(r_w * img.rows);
             x = 0;
             y = (INPUT_H - h) / 2;
         } else {
-            w = r_h * img.cols;
+            w = static_cast<int>(r_h * img.cols);
             h = INPUT_H;
             x = (INPUT_W - w) / 2;
             y = 0;
@@ -176,10 +176,10 @@ namespace detector {
 
         if (r_h > r_w) {
             for (const auto &det : res) {
-                int l = det.bbox[0] - det.bbox[2] / 2.f;
-                int r = det.bbox[0] + det.bbox[2] / 2.f;
-                int t = det.bbox[1] - det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
-                int b = det.bbox[1] + det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
+                auto l = det.bbox[0] - det.bbox[2] / 2.f;
+                auto r = det.bbox[0] + det.bbox[2] / 2.f;
+                auto t = det.bbox[1] - det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
+                auto b = det.bbox[1] + det.bbox[3] / 2.f - (INPUT_H - r_w * rows) / 2;
                 l = l / r_w;
                 r = r / r_w;
                 t = t / r_w;
@@ -188,10 +188,10 @@ namespace detector {
             }
         } else {
             for (const auto &det : res) {
-                int l = det.bbox[0] - det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
-                int r = det.bbox[0] + det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
-                int t = det.bbox[1] - det.bbox[3] / 2.f;
-                int b = det.bbox[1] + det.bbox[3] / 2.f;
+                auto l = det.bbox[0] - det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
+                auto r = det.bbox[0] + det.bbox[2] / 2.f - (INPUT_W - r_h * cols) / 2;
+                auto t = det.bbox[1] - det.bbox[3] / 2.f;
+                auto b = det.bbox[1] + det.bbox[3] / 2.f;
                 l = l / r_h;
                 r = r / r_h;
                 t = t / r_h;

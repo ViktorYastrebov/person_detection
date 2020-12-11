@@ -1,10 +1,9 @@
 #include "builder.h"
-#include "deep_sort.h"
 #include "deep_sort_tracker/tracker.h"
-#include "sort_tracker/trackers_pool.h"
-#include "inside_time_tracker/in_area_tracker.h"
-#include "inside_time_tracker/in_area_track.h"
-
+#include "deep_sort_tracker/time_tracker.h"
+#include "deep_sort_tracker/time_track.h"
+#include "deep_sort_tracker/deep_sort.h"
+#include "sort_tracker/tracker.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <filesystem>
@@ -83,7 +82,7 @@ void sort_tracking(const std::string &model_path, const std::string &file_name, 
         cv::VideoCapture video_stream(file_name);
         auto classes = selectDetectionClasses(coco_classes_file, id_classes);
         auto detector = detector::build(getByExtention(model_path), model_path, classes);
-        auto tracker = sort_tracker::TrackersPool(10);
+        auto tracker = sort_tracker::Tracker(60, 3, 30);
 
         cv::VideoWriter writter;
         cv::Size out_size = cv::Size((int)video_stream.get(cv::CAP_PROP_FRAME_WIDTH),
@@ -152,7 +151,7 @@ void deep_sort_tracking_time(const std::string &model_path, const std::string &f
         auto classes = selectDetectionClasses(coco_classes_file, id_classes);
         cv::VideoCapture video_stream(file_name);
         auto detector = detector::build(getByExtention(model_path), model_path, classes);
-        auto deep_sort = std::make_unique<deep_sort_tracker::DeepSort>(deep_sort_model);
+        auto deep_sort = std::make_unique<deep_sort::DeepSort>(deep_sort_model);
 
         constexpr const float max_cosine_distance = 0.2f;
         constexpr const int max_badget = 100;
@@ -185,7 +184,7 @@ void deep_sort_tracking_time(const std::string &model_path, const std::string &f
         //INFO: just for visual checking
         std::vector<std::vector<cv::Point>> contours{ polygon };
 
-        auto tracker = inside_area_tracker::InAreaTracker(polygon, max_cosine_distance, max_badget);
+        auto tracker = deep_sort::TimeTracker(polygon, max_cosine_distance, max_badget);
         cv::Mat frame;
         while (video_stream.read(frame)) {
             auto start = std::chrono::system_clock::now();
@@ -205,17 +204,18 @@ void deep_sort_tracking_time(const std::string &model_path, const std::string &f
                     continue;
                 }
 
-                auto bbox = track->to_tlwh();
+                auto rets = track->to_tlwh();
                 cv::Rect rect(
-                    static_cast<int>(bbox(0)),
-                    static_cast<int>(bbox(1)),
-                    static_cast<int>(bbox(2)),
-                    static_cast<int>(bbox(3))
+                    static_cast<int>(rets.position(0)),
+                    static_cast<int>(rets.position(1)),
+                    static_cast<int>(rets.position(2)),
+                    static_cast<int>(rets.position(3))
                 );
+
                 std::string time = "None";
                 cv::Scalar color(0, 0, 255);
-                if (track->getType() == deep_sort::Track::IN_AREA_TRACKER) {
-                    auto time_track = std::static_pointer_cast<inside_area_tracker::InAreaTimeTrack>(track);
+                if (track->getType() == deep_sort::Track::TIME_TRACKER) {
+                    auto time_track = std::static_pointer_cast<deep_sort::TimeTrack>(track);
                     if (time_track->isInside()) {
                         color = cv::Scalar(0, 255, 0);
                         time = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time_track->duration()).count());
@@ -250,11 +250,13 @@ void deep_sort_tracking(const std::string &model_path, const std::string &file_n
         auto classes = selectDetectionClasses(coco_classes_file, id_classes);
         cv::VideoCapture video_stream(file_name);
         auto detector = detector::build(getByExtention(model_path), model_path, classes);
-        auto deep_sort = std::make_unique<deep_sort_tracker::DeepSort>(deep_sort_model);
+        auto deep_sort = std::make_unique<deep_sort::DeepSort>(std::filesystem::path(deep_sort_model));
 
+        constexpr const int VECTOR_MULTIPLIER = 20;
         constexpr const float max_cosine_distance = 0.2f;
-        constexpr const int max_badget = 100;
-        auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget);
+        constexpr const int max_badget = common::datatypes::FEATURES_SIZE;
+
+        auto tracker = deep_sort::Tracker(max_cosine_distance, max_badget, 0.7f, 120, 3, 3, 60);
         cv::Mat frame;
 
         cv::VideoWriter writter;
@@ -271,6 +273,7 @@ void deep_sort_tracking(const std::string &model_path, const std::string &file_n
 
         while (video_stream.read(frame)) {
             //auto start = std::chrono::system_clock::now();
+            // orig: 0.3, 0.5f -> 0.5 0.7
             auto detections = detector->inference(frame, 0.3f, 0.5f);
 
             auto features = deep_sort->getFeatures(frame, detections);
@@ -282,16 +285,35 @@ void deep_sort_tracking(const std::string &model_path, const std::string &file_n
             //std::cout << "Frame processing time: " << int_ms.count() << " ms" << std::endl;
 
             for (const auto &track : tracker.getTracks()) {
+#if 0
                 if (!track->is_confirmed() || track->time_since_update > 1) {
                     continue;
                 }
-                auto bbox = track->to_tlwh();
+#endif
+
+#if 1
+                if (!track->is_confirmed()) {
+                    continue;
+                }
+#endif
+
+                auto rets = track->to_tlwh();
                 cv::Rect rect(
-                    static_cast<int>(bbox(0)),
-                    static_cast<int>(bbox(1)),
-                    static_cast<int>(bbox(2)),
-                    static_cast<int>(bbox(3))
+                    static_cast<int>(rets.position(0)),
+                    static_cast<int>(rets.position(1)),
+                    static_cast<int>(rets.position(2)),
+                    static_cast<int>(rets.position(3))
                 );
+
+                cv::Point rectCenter(rect.x + rect.width / 2, rect.y + rect.height / 2);
+                cv::Point velCenter(static_cast<int>(rets.velocity(0) + rets.velocity(2) / 2.0f),
+                                    static_cast<int>(rets.velocity(1) + rets.velocity(3) / 2.0f)
+                );
+
+                cv::Point p1(rectCenter.x, rectCenter.y);
+                cv::Point p2(rectCenter.x + velCenter.x * VECTOR_MULTIPLIER, rectCenter.y + velCenter.y * VECTOR_MULTIPLIER);
+                cv::arrowedLine(frame, p1, p2, cv::Scalar(255, 0, 0), 2);
+
                 cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2);
                 std::string str_id = std::to_string(track->track_id) + ", class :" + id_classes.at(track->class_id);
                 cv::putText(frame, str_id, cv::Point(rect.x, rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);

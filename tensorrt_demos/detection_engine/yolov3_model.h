@@ -1,10 +1,12 @@
 #pragma once
 
-#include "base_model.h"
+#include "common_model.h"
 #include <filesystem>
 
 namespace detector {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
     class ENGINE_DECL YoloV3SPPModel : public CommonDetector {
     public:
         YoloV3SPPModel(const std::filesystem::path &model_path, const std::vector<int> &classes_ids, const int BATCH_SIZE = 1);
@@ -17,5 +19,5 @@ namespace detector {
     private:
         std::vector<int> classes_ids_;
     };
-
+#pragma warning(pop)
 }

@@ -22,11 +22,11 @@ namespace linear_assignment {
     };
 
 
-    TrackerMatch matching_cascade(Tracker* distance_metric,
-        Tracker::MetricFunction metric_function,
+    TrackerMatch matching_cascade(TrackerImpl* distance_metric,
+        TrackerImpl::MetricFunction metric_function,
         float max_distance,
         int cascade_depth,
-        std::vector<Tracker::TrackPtr>& tracks,
+        std::vector<AbstractTracker::TrackPtr>& tracks,
         const Detections &detections,
         std::vector<int> &track_indices,
         std::vector<int> detection_indices)
@@ -84,10 +84,10 @@ namespace linear_assignment {
     }
 
     TrackerMatch min_cost_matching(
-        Tracker* distance_metric,
-        Tracker::MetricFunction metric_function,
+        TrackerImpl* distance_metric,
+        TrackerImpl::MetricFunction metric_function,
         float max_distance,
-        std::vector<Tracker::TrackPtr>& tracks,
+        std::vector<AbstractTracker::TrackPtr>& tracks,
         const Detections &detections,
         std::vector<int>& track_indices,
         std::vector<int>& detection_indices)
@@ -166,7 +166,7 @@ namespace linear_assignment {
     CostMatrixType gate_cost_matrix(
         KalmanFilter* kf,
         CostMatrixType &costMat,
-        std::vector<Tracker::TrackPtr>& tracks,
+        std::vector<AbstractTracker::TrackPtr>& tracks,
         const Detections &detections,
         const std::vector<int>& track_indices,
         const std::vector<int>& detection_indices,
@@ -181,7 +181,7 @@ namespace linear_assignment {
         }
 
         for (size_t i = 0; i < track_indices.size(); i++) {
-            Tracker::TrackPtr track = tracks[track_indices[i]];
+            AbstractTracker::TrackPtr track = tracks[track_indices[i]];
             Eigen::Matrix<float, 1, -1> gating_distance = kf->gating_distance(track->mean, track->covariance, measurements, only_position);
             for (int j = 0; j < gating_distance.cols(); j++) {
                 if (gating_distance(0, j) > gating_threshold) {
